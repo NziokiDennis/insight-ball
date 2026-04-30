@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { OddsInputPanel } from "@/components/prediction/OddsInputPanel";
 import { ResultsPanel } from "@/components/prediction/ResultsPanel";
 import { ResultsSkeleton } from "@/components/prediction/ResultsSkeleton";
 import { usePrediction } from "@/hooks/usePrediction";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { oddsSchema, type OddsFormData } from "@/utils/validation";
 import {
   Activity,
@@ -17,6 +18,8 @@ export default function Home() {
   const { result, isLoading, isLocal, predict, clear } = usePrediction();
   const [lastInput, setLastInput] = useState<OddsFormData | null>(null);
   const [searchParams] = useSearchParams();
+  const isMobile = useIsMobile();
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Load from shared URL params
   useEffect(() => {
@@ -38,6 +41,12 @@ export default function Home() {
       predict(data);
     }
   }, []);
+
+  useEffect(() => {
+    if (result && isMobile && resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [result, isMobile]);
 
   const handleSubmit = (data: OddsFormData) => {
     setLastInput(data);
@@ -141,7 +150,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0" ref={resultsRef}>
                 {isLoading && <ResultsSkeleton />}
 
                 {result && lastInput && !isLoading ? (

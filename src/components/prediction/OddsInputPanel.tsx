@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -119,7 +119,7 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
       </div>
 
       {/* Team names (optional) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="home-team" className="text-muted-foreground text-xs uppercase tracking-wider">
             Home Team
@@ -149,14 +149,14 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
       </div>
 
       {/* Odds inputs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Home Win", value: homeOdds, setter: setHomeOdds, field: "home_odds" },
           { label: "Draw", value: drawOdds, setter: setDrawOdds, field: "draw_odds" },
           { label: "Away Win", value: awayOdds, setter: setAwayOdds, field: "away_odds" },
         ].map(({ label, value, setter, field }) => (
           <div key={field} className="space-y-2">
-            <Label htmlFor={field} className="text-muted-foreground text-xs uppercase tracking-wider">
+            <Label htmlFor={field} className="block truncate text-muted-foreground text-xs uppercase tracking-wider">
               {label}
             </Label>
             <Input
