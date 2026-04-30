@@ -4,13 +4,17 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { OddsInputPanel } from "@/components/prediction/OddsInputPanel";
 import { ResultsPanel } from "@/components/prediction/ResultsPanel";
 import { ResultsSkeleton } from "@/components/prediction/ResultsSkeleton";
-import { useSimulation } from "@/hooks/useSimulation";
-import type { OddsFormData } from "@/utils/validation";
-import { Zap, Eye, Target, Flame } from "lucide-react";
-import ignitionLogo from "@/assets/ignition-logo.png";
+import { usePrediction } from "@/hooks/usePrediction";
+import { oddsSchema, type OddsFormData } from "@/utils/validation";
+import {
+  Activity,
+  CalendarDays,
+  CircleDot,
+  TrendingUp,
+} from "lucide-react";
 
 export default function Home() {
-  const { result, isLoading, simulate, clear } = useSimulation();
+  const { result, isLoading, isLocal, predict, clear } = usePrediction();
   const [lastInput, setLastInput] = useState<OddsFormData | null>(null);
   const [searchParams] = useSearchParams();
 
@@ -20,22 +24,24 @@ export default function Home() {
     const d = searchParams.get("d");
     const a = searchParams.get("a");
     if (h && d && a) {
-      const data: OddsFormData = {
+      const parsed = oddsSchema.safeParse({
         home_odds: parseFloat(h),
         draw_odds: parseFloat(d),
         away_odds: parseFloat(a),
         simulations: parseInt(searchParams.get("s") || "1000"),
         home_team: searchParams.get("ht") || "",
         away_team: searchParams.get("at") || "",
-      };
+      });
+      if (!parsed.success) return;
+      const data = parsed.data;
       setLastInput(data);
-      simulate(data.home_odds, data.draw_odds, data.away_odds, data.simulations);
+      predict(data);
     }
   }, []);
 
   const handleSubmit = (data: OddsFormData) => {
     setLastInput(data);
-    simulate(data.home_odds, data.draw_odds, data.away_odds, data.simulations);
+    predict(data);
   };
 
   const handleClear = () => {
@@ -43,74 +49,142 @@ export default function Home() {
     clear();
   };
 
+  const stats = result
+    ? [
+        { label: "Home", value: `${result.home_probability}%`, dot: "bg-primary" },
+        { label: "Draw", value: `${result.draw_probability}%`, dot: "bg-warning" },
+        { label: "Away", value: `${result.away_probability}%`, dot: "bg-secondary" },
+        { label: "Market margin", value: `${result.overround.toFixed(2)}%`, dot: "bg-muted-foreground" },
+      ]
+    : [
+        { label: "Home", value: "--", dot: "bg-primary" },
+        { label: "Draw", value: "--", dot: "bg-warning" },
+        { label: "Away", value: "--", dot: "bg-secondary" },
+        { label: "Market margin", value: "--", dot: "bg-muted-foreground" },
+      ];
+
   return (
-    <PageWrapper>
-      {/* Hero */}
-      <section className="text-center mb-12 animate-slide-up">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <img src={ignitionLogo} alt="Ignition" className="h-12 w-12 rounded-lg" />
-          <h1 className="font-display font-extrabold text-3xl sm:text-4xl lg:text-5xl text-foreground tracking-tight">
-            Ignition
-          </h1>
-        </div>
-        <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
-          Mathematical football match prediction engine. Convert bookmaker odds to true probabilities 
-          using Monte Carlo simulation. <span className="text-primary font-medium">We simulate, not speculate.</span>
-        </p>
-      </section>
-
-      {/* Calculator */}
-      <div className="max-w-3xl mx-auto space-y-6">
-        <OddsInputPanel onSubmit={handleSubmit} isLoading={isLoading} onClear={handleClear} />
-
-        {isLoading && <ResultsSkeleton />}
-
-        {result && lastInput && !isLoading && (
-          <ResultsPanel
-            result={result}
-            homeOdds={lastInput.home_odds}
-            drawOdds={lastInput.draw_odds}
-            awayOdds={lastInput.away_odds}
-            homeTeam={lastInput.home_team}
-            awayTeam={lastInput.away_team}
-            isLocal={true}
-          />
-        )}
-      </div>
-
-      {/* Feature cards */}
-      {!result && (
-        <section className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto animate-slide-up" style={{ animationDelay: "200ms" }}>
-          {[
-            {
-              icon: Zap,
-              title: "Instant Speed",
-              desc: "Run up to 100,000 simulations in milliseconds. Results appear before you blink.",
-            },
-            {
-              icon: Eye,
-              title: "Full Transparency",
-              desc: "See every calculation step. No black boxes, no hidden models. Verify the math yourself.",
-            },
-            {
-              icon: Target,
-              title: "Value Edge",
-              desc: "Spot the gap between our probability and the bookmaker's implied odds. Find real value.",
-            },
-          ].map((card, idx) => (
-            <div
-              key={card.title}
-              className="surface-panel p-6 space-y-3 hover:border-primary/30 transition-colors"
-            >
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <card.icon className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="font-display font-semibold text-foreground">{card.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{card.desc}</p>
+    <PageWrapper className="min-h-[calc(100vh-4rem)]">
+      <div className="dashboard-shell min-h-[calc(100vh-6rem)] overflow-hidden animate-slide-up">
+        <div className="mac-chrome">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+              <span className="h-3 w-3 rounded-full bg-[#ffbd2e]" />
+              <span className="h-3 w-3 rounded-full bg-[#28c840]" />
             </div>
-          ))}
+            <div className="hidden items-end gap-1 sm:flex">
+              <div className="mac-tab">
+                <CircleDot className="mr-2 h-3.5 w-3.5 text-primary" />
+                Prediction
+              </div>
+              <div className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground">
+                Backtest
+              </div>
+              <div className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground">
+                Markets
+              </div>
+            </div>
+          </div>
+          <div className="hidden rounded-md bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm md:block">
+            Backend model online
+          </div>
+        </div>
+
+        <section className="bg-primary px-4 py-5 text-white sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-medium text-white/75">
+                <CalendarDays className="h-4 w-4" />
+                <span>Prediction desk</span>
+              </div>
+              <h1 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                Match Intelligence
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/78">
+                Enter the fixture odds, compare outcome probability, and only treat positive expected value as a signal.
+              </p>
+            </div>
+            <div className="rounded-md bg-white/14 px-4 py-3 text-sm ring-1 ring-white/20">
+              <span className="text-white/70">Mode</span>
+              <span className="ml-2 font-semibold text-white">{isLocal ? "Local fallback" : "Backend model"}</span>
+            </div>
+          </div>
         </section>
-      )}
+
+        <section className="bg-[#f6f7f9] p-3 sm:p-5 lg:p-6">
+          <div className="min-w-0">
+            <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {stats.map((stat) => (
+                <div key={stat.label} className="dashboard-tile min-w-0 p-4">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className={`h-2 w-2 rounded-full ${stat.dot}`} />
+                    <span>{stat.label}</span>
+                  </div>
+                  <p className="mt-2 truncate font-mono-data text-[clamp(1.55rem,3vw,2.25rem)] font-semibold text-foreground">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(340px,440px)_1fr]">
+              <div className="space-y-5 min-w-0">
+                <OddsInputPanel onSubmit={handleSubmit} isLoading={isLoading} onClear={handleClear} />
+
+                <div className="dashboard-tile p-5">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-display text-lg font-semibold">Betting Rule</h2>
+                    <Activity className="h-4 w-4 text-primary" />
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    A likely winner is not automatically a bet. The signal matters only when model probability beats the market price by enough to create positive expected value.
+                  </p>
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                {isLoading && <ResultsSkeleton />}
+
+                {result && lastInput && !isLoading ? (
+                  <ResultsPanel
+                    result={result}
+                    homeOdds={lastInput.home_odds}
+                    drawOdds={lastInput.draw_odds}
+                    awayOdds={lastInput.away_odds}
+                    homeTeam={lastInput.home_team}
+                    awayTeam={lastInput.away_team}
+                    isLocal={isLocal}
+                  />
+                ) : (
+                  <div className="dashboard-tile min-h-[420px] p-5 sm:p-6">
+                    <div className="flex items-center justify-between border-b border-border pb-4">
+                      <div>
+                        <h2 className="font-display text-xl font-semibold">Prediction Output</h2>
+                        <p className="mt-1 text-sm text-muted-foreground">Awaiting fixture analysis.</p>
+                      </div>
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="mt-8 grid gap-4 md:grid-cols-3">
+                      {["Home win", "Draw", "Away win"].map((label) => (
+                        <div key={label} className="rounded-lg border border-dashed border-border bg-muted/40 p-5">
+                          <p className="text-sm text-muted-foreground">{label}</p>
+                          <div className="mt-4 h-3 rounded-full bg-white" />
+                          <div className="mt-3 h-8 w-24 rounded-md bg-white" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-8 rounded-lg bg-[#111827] p-5 text-white">
+                      <p className="text-sm font-medium">Risk discipline</p>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+                        The strongest prediction is not automatically a bet. We only care when model probability creates positive expected value against the offered odds.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </PageWrapper>
   );
 }

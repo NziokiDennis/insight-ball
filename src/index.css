@@ -6,52 +6,52 @@
 
 @layer base {
   :root {
-    --background: 216 28% 7%;
-    --foreground: 213 31% 91%;
+    --background: 215 14% 82%;
+    --foreground: 220 23% 10%;
 
-    --card: 215 27% 11%;
-    --card-foreground: 213 31% 91%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 23% 10%;
 
-    --popover: 215 27% 11%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 23% 10%;
 
-    --primary: 27 100% 45%;
+    --primary: 11 100% 57%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 89% 52%;
+    --secondary: 210 92% 45%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 215 14% 18%;
-    --muted-foreground: 214 9% 56%;
+    --muted: 220 17% 94%;
+    --muted-foreground: 220 9% 43%;
 
-    --accent: 215 14% 18%;
-    --accent-foreground: 213 31% 91%;
+    --accent: 11 100% 96%;
+    --accent-foreground: 11 75% 34%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 140 63% 37%;
+    --success: 152 63% 38%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 7%;
 
-    --border: 215 14% 22%;
-    --input: 215 14% 22%;
-    --ring: 27 100% 45%;
+    --border: 220 16% 90%;
+    --input: 220 16% 88%;
+    --ring: 11 100% 57%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 216 28% 7%;
-    --sidebar-foreground: 213 31% 91%;
-    --sidebar-primary: 27 100% 45%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 23% 10%;
+    --sidebar-primary: 11 100% 57%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 14% 15%;
-    --sidebar-accent-foreground: 213 31% 91%;
-    --sidebar-border: 215 14% 22%;
-    --sidebar-ring: 27 100% 45%;
+    --sidebar-accent: 220 17% 95%;
+    --sidebar-accent-foreground: 220 23% 10%;
+    --sidebar-border: 220 16% 90%;
+    --sidebar-ring: 11 100% 57%;
 
-    --surface: 215 27% 11%;
+    --surface: 0 0% 100%;
   }
 
   /* Light mode override — optional toggle */
@@ -98,6 +98,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', system-ui, -apple-system, sans-serif;
@@ -113,10 +114,23 @@
     font-variant-numeric: tabular-nums;
   }
   .glass-panel {
-    @apply bg-card/80 backdrop-blur-md border border-border rounded-lg;
+    @apply bg-card/90 backdrop-blur-md border border-border rounded-lg shadow-sm;
   }
   .surface-panel {
-    @apply bg-card border border-border rounded-lg;
+    @apply bg-card border border-border rounded-lg shadow-sm;
+  }
+  .dashboard-shell {
+    @apply bg-white border border-white/70 shadow-2xl;
+    border-radius: 14px;
+  }
+  .dashboard-tile {
+    @apply bg-white border border-border rounded-lg shadow-sm;
+  }
+  .mac-chrome {
+    @apply flex items-center justify-between border-b border-border bg-[#eef1f5] px-4 py-2;
+  }
+  .mac-tab {
+    @apply flex items-center rounded-t-lg border border-border border-b-white bg-white px-4 py-2 text-sm font-medium text-foreground shadow-sm;
   }
 }
 

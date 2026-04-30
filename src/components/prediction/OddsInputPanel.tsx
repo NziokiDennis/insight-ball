@@ -102,9 +102,12 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
   };
 
   return (
-    <form onSubmit={handleSubmit} className="surface-panel p-6 space-y-6">
+    <form onSubmit={handleSubmit} className="dashboard-tile p-5 space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="font-display font-bold text-lg text-foreground">Match Odds</h2>
+        <div>
+          <h2 className="font-display font-bold text-lg text-foreground">Fixture Input</h2>
+          <p className="text-xs text-muted-foreground">Teams, market odds, and simulation depth</p>
+        </div>
         <button
           type="button"
           onClick={handleReset}
@@ -146,7 +149,7 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
       </div>
 
       {/* Odds inputs */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: "Home Win", value: homeOdds, setter: setHomeOdds, field: "home_odds" },
           { label: "Draw", value: drawOdds, setter: setDrawOdds, field: "draw_odds" },
@@ -164,7 +167,7 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
               value={value}
               onChange={handleOddsInput(setter, field)}
               onKeyDown={handleKeyDown}
-              className={`bg-background font-mono text-center text-lg ${
+              className={`bg-[#fbfbfc] font-mono text-center text-lg h-12 ${
                 errors[field] ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"
               }`}
               aria-invalid={!!errors[field]}
@@ -205,7 +208,7 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
       <Button
         type="submit"
         disabled={isLoading || !homeOdds || !drawOdds || !awayOdds}
-        className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-display font-semibold text-base transition-all active:scale-[0.98]"
+        className="w-full h-12 bg-[#111827] text-white hover:bg-[#1f2937] font-display font-semibold text-base transition-all active:scale-[0.98]"
       >
         {isLoading ? (
           <span className="flex items-center gap-2">
@@ -215,7 +218,7 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
         ) : (
           <span className="flex items-center gap-2">
             <Flame className="h-5 w-5" />
-            Calculate Probabilities
+            Run Prediction
           </span>
         )}
       </Button>

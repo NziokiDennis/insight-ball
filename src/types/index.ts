@@ -21,6 +21,19 @@ export interface PredictionResponse {
   confidence_band: number;
   overround: number;
   duration_ms: number;
+  market_probabilities?: {
+    home: number;
+    draw: number;
+    away: number;
+  };
+  expected_value?: {
+    home: number;
+    draw: number;
+    away: number;
+  };
+  recommended_outcome?: "home" | "draw" | "away" | null;
+  most_likely_outcome?: "home" | "draw" | "away";
+  model_notes?: string[];
 }
 
 export interface MathStep {

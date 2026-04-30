@@ -44,13 +44,13 @@ function AnimatedNumber({ target, duration = 400, delay = 0 }: { target: number;
 
 export function OutcomeCard({ label, probability, count, simulations, valueEdge, color, delay = 0 }: OutcomeCardProps) {
   return (
-    <div className="surface-panel p-5 space-y-4 animate-slide-up" style={{ animationDelay: `${delay}ms` }}>
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{label}</h3>
+    <div className="surface-panel min-w-0 p-4 sm:p-5 space-y-4 animate-slide-up" style={{ animationDelay: `${delay}ms` }}>
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <h3 className="min-w-0 break-words text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</h3>
         <ValueEdgeBadge edge={valueEdge} />
       </div>
 
-      <div className="font-mono-data text-5xl font-bold text-foreground leading-none">
+      <div className="font-mono-data text-[clamp(2.35rem,4vw,4rem)] font-bold text-foreground leading-none tracking-normal">
         <AnimatedNumber target={probability} delay={delay} />
       </div>
 

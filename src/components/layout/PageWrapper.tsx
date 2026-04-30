@@ -7,7 +7,7 @@ interface PageWrapperProps {
 
 export function PageWrapper({ children, className = "" }: PageWrapperProps) {
   return (
-    <div className={`w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-fade-in ${className}`}>
+    <div className={`w-full px-2 sm:px-4 lg:px-5 py-4 animate-fade-in ${className}`}>
       {children}
     </div>
   );

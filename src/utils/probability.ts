@@ -43,10 +43,10 @@ export function runLocalSimulation(
   const simDraw = drawCount / simulations;
   const simAway = awayCount / simulations;
 
-  // Step 6: Value edge
-  const homeEdge = parseFloat(((simHome - rawHome) * 100).toFixed(2));
-  const drawEdge = parseFloat(((simDraw - rawDraw) * 100).toFixed(2));
-  const awayEdge = parseFloat(((simAway - rawAway) * 100).toFixed(2));
+  // Step 6: Expected value against the offered decimal odds
+  const homeEdge = parseFloat(((simHome * homeOdds - 1) * 100).toFixed(2));
+  const drawEdge = parseFloat(((simDraw * drawOdds - 1) * 100).toFixed(2));
+  const awayEdge = parseFloat(((simAway * awayOdds - 1) * 100).toFixed(2));
 
   // Step 7: Confidence band (Wilson 95%)
   const z = 1.96;
@@ -69,6 +69,29 @@ export function runLocalSimulation(
     confidence_band: parseFloat((band * 100).toFixed(2)),
     overround: parseFloat(overround.toFixed(2)),
     duration_ms: parseFloat(duration.toFixed(1)),
+    market_probabilities: {
+      home: parseFloat((pHome * 100).toFixed(2)),
+      draw: parseFloat((pDraw * 100).toFixed(2)),
+      away: parseFloat((pAway * 100).toFixed(2)),
+    },
+    expected_value: {
+      home: homeEdge,
+      draw: drawEdge,
+      away: awayEdge,
+    },
+    recommended_outcome: homeEdge > 3 || drawEdge > 3 || awayEdge > 3
+      ? ([
+          ["home", homeEdge],
+          ["draw", drawEdge],
+          ["away", awayEdge],
+        ].sort((a, b) => Number(b[1]) - Number(a[1]))[0][0] as "home" | "draw" | "away")
+      : null,
+    most_likely_outcome: ([
+      ["home", simHome],
+      ["draw", simDraw],
+      ["away", simAway],
+    ].sort((a, b) => Number(b[1]) - Number(a[1]))[0][0] as "home" | "draw" | "away"),
+    model_notes: ["Client fallback uses devigged market probabilities only."],
   };
 }
 
@@ -105,9 +128,14 @@ export function generateMathSteps(
       result: `Home: ${result.home_count.toLocaleString()} wins | Draw: ${result.draw_count.toLocaleString()} | Away: ${result.away_count.toLocaleString()} wins`,
     },
     {
-      label: "Final Simulated Probabilities",
+      label: "Final Outcome Probabilities",
       formula: "P_sim = count / total_simulations × 100",
       result: `Home: ${result.home_probability}% | Draw: ${result.draw_probability}% | Away: ${result.away_probability}%`,
+    },
+    {
+      label: "Expected Value",
+      formula: "EV = model_probability × decimal_odds - 1",
+      result: `Home: ${result.home_value_edge}% | Draw: ${result.draw_value_edge}% | Away: ${result.away_value_edge}%`,
     },
     {
       label: "95% Confidence Band",
