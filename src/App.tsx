@@ -26,14 +26,14 @@ function PageFallback() {
   );
 }
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean }> {
+class ErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean; message: string }> {
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { crashed: false };
+    this.state = { crashed: false, message: "" };
   }
 
-  static getDerivedStateFromError() {
-    return { crashed: true };
+  static getDerivedStateFromError(error: unknown) {
+    return { crashed: true, message: String(error) };
   }
 
   render() {
@@ -41,7 +41,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolea
       return (
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
           <p className="font-display text-xl font-semibold text-foreground">Something went wrong</p>
-          <p className="text-sm text-muted-foreground">A page component failed to load.</p>
+          <p className="max-w-lg rounded bg-muted px-3 py-2 font-mono text-xs text-left text-destructive break-all">
+            {this.state.message}
+          </p>
           <button
             onClick={() => window.location.reload()}
             className="mt-2 rounded-md bg-primary px-5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
