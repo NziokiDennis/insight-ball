@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -12,6 +12,7 @@ interface OddsInputPanelProps {
   onSubmit: (data: OddsFormData) => void;
   isLoading: boolean;
   onClear: () => void;
+  prefill?: { homeTeam: string; awayTeam: string } | null;
 }
 
 interface EloState {
@@ -19,7 +20,7 @@ interface EloState {
   loading: boolean;
 }
 
-export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelProps) {
+export function OddsInputPanel({ onSubmit, isLoading, onClear, prefill }: OddsInputPanelProps) {
   const [homeOdds, setHomeOdds] = useState("");
   const [drawOdds, setDrawOdds] = useState("");
   const [awayOdds, setAwayOdds] = useState("");
@@ -30,6 +31,16 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
   const [sliderValue, setSliderValue] = useState([simulationsToSlider(1000)]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefillRef = useRef(prefill);
+
+  useEffect(() => {
+    if (!prefill || prefill === prefillRef.current) return;
+    prefillRef.current = prefill;
+    setHomeTeam(prefill.homeTeam);
+    setAwayTeam(prefill.awayTeam);
+    setHomeElo({ value: null, loading: false });
+    setAwayElo({ value: null, loading: false });
+  }, [prefill]);
 
   const simulations = sliderToSimulations(sliderValue[0]);
 

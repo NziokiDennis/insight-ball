@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.request import urlopen
+from urllib.error import URLError
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +16,23 @@ from app.core.poisson import compute_league_stats, compute_team_ratings, expecte
 from app.data_sources.clubelo import fetch_current_elo
 from app.data_sources.football_data import read_csv
 from app.schemas import BacktestRequest, PredictionRequest
+
+_ESPN_TO_FD: dict[str, str] = {
+    "Manchester United": "Man United",
+    "Manchester City": "Man City",
+    "Tottenham Hotspur": "Tottenham",
+    "Newcastle United": "Newcastle",
+    "Wolverhampton Wanderers": "Wolves",
+    "West Bromwich Albion": "West Brom",
+    "Brighton & Hove Albion": "Brighton",
+    "Nottingham Forest": "Nott'm Forest",
+    "Sheffield United": "Sheffield Utd",
+    "Luton Town": "Luton",
+    "Ipswich Town": "Ipswich",
+    "Leicester City": "Leicester",
+    "Crystal Palace": "Crystal Palace",
+    "Brentford": "Brentford",
+}
 
 _DATA_DIR = Path(__file__).parent.parent / "data" / "football-data"
 _form_rows: list[dict[str, str]] = []
@@ -78,9 +98,15 @@ def prediction(request: PredictionRequest) -> dict:
         if away_elo is not None:
             auto_fetched.append(f"{request.away_team} {away_elo:.0f}")
 
-    # --- Form ---
-    home_form = compute_team_form(_form_rows, request.home_team) if request.home_team else None
-    away_form = compute_team_form(_form_rows, request.away_team) if request.away_team else None
+    # --- Form (venue-specific: home team home record, away team away record) ---
+    home_form = (
+        compute_team_form(_form_rows, request.home_team, venue="home")
+        or compute_team_form(_form_rows, request.home_team)
+    ) if request.home_team else None
+    away_form = (
+        compute_team_form(_form_rows, request.away_team, venue="away")
+        or compute_team_form(_form_rows, request.away_team)
+    ) if request.away_team else None
 
     # --- Poisson ---
     lambda_home = lambda_away = None
@@ -126,18 +152,52 @@ def list_datasets() -> dict:
     return {"datasets": datasets}
 
 
+@app.get("/api/v1/fixtures")
+def get_fixtures() -> dict:
+    """Fetch upcoming Premier League fixtures from ESPN (free, no key required)."""
+    try:
+        url = "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard"
+        with urlopen(url, timeout=5) as r:
+            data = json.loads(r.read())
+        fixtures = []
+        for event in data.get("events", []):
+            comp = (event.get("competitions") or [{}])[0]
+            status_name = ((comp.get("status") or {}).get("type") or {}).get("name", "")
+            if status_name not in ("STATUS_SCHEDULED", "STATUS_IN_PROGRESS"):
+                continue
+            competitors = comp.get("competitors", [])
+            home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+            away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+            if not home or not away:
+                continue
+            raw_home = (home.get("team") or {}).get("displayName") or (home.get("team") or {}).get("name", "")
+            raw_away = (away.get("team") or {}).get("displayName") or (away.get("team") or {}).get("name", "")
+            fixtures.append({
+                "id": event.get("id", ""),
+                "date": event.get("date", ""),
+                "home_team": _ESPN_TO_FD.get(raw_home, raw_home),
+                "away_team": _ESPN_TO_FD.get(raw_away, raw_away),
+            })
+        return {"fixtures": fixtures[:10]}
+    except (URLError, OSError, json.JSONDecodeError, KeyError):
+        return {"fixtures": []}
+
+
 @app.post("/api/v1/backtest")
 def backtest(request: BacktestRequest) -> dict:
-    path = _DATA_DIR / f"{request.dataset}.csv"
-    if not path.exists():
-        raise HTTPException(status_code=404, detail=f"Dataset '{request.dataset}' not found")
-    rows = read_csv(path)
+    all_rows: list[dict] = []
+    for key in request.datasets:
+        path = _DATA_DIR / f"{key}.csv"
+        if not path.exists():
+            raise HTTPException(status_code=404, detail=f"Dataset '{key}' not found")
+        all_rows.extend(read_csv(path))
     return backtest_rows(
-        rows,
+        all_rows,
         BacktestConfig(
             min_edge=request.min_edge,
             stake=request.stake,
             min_home_matches=request.min_home_matches,
             min_away_matches=request.min_away_matches,
+            max_odds=request.max_odds,
         ),
     )

@@ -7,11 +7,12 @@ export async function fetchDatasets(): Promise<DatasetInfo[]> {
 }
 
 export interface BacktestParams {
-  dataset: string;
+  datasets: string[];
   min_edge: number;
   stake: number;
   min_home_matches: number;
   min_away_matches: number;
+  max_odds: number;
 }
 
 export async function runBacktest(params: BacktestParams): Promise<BacktestResult> {

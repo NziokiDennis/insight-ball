@@ -23,11 +23,13 @@ def compute_team_form(
     rows: list[Mapping[str, str]],
     team_name: str,
     n: int = FORM_WINDOW,
+    venue: str | None = None,
 ) -> TeamForm | None:
     """Extract the last N completed matches for a team and compute form stats.
 
-    Matches both home and away appearances. Team name comparison is
-    case-insensitive so "Arsenal" and "arsenal" both resolve.
+    venue: "home" (only home appearances), "away" (only away appearances),
+           or None for all matches. Venue-specific form prevents the signal
+           from overestimating away-team strength in home-vs-away comparisons.
     """
     target = team_name.strip().lower()
     completed: list[tuple[str, float, float]] = []  # (W/D/L, scored, conceded)
@@ -39,9 +41,17 @@ def compute_team_form(
         fthg_raw = row.get("FTHG") or ""
         ftag_raw = row.get("FTAG") or ""
 
-        if home != target and away != target:
+        is_home = home == target
+        is_away = away == target
+        if not is_home and not is_away:
             continue
         if ftr not in ("H", "D", "A"):
+            continue
+
+        # Venue filter
+        if venue == "home" and not is_home:
+            continue
+        if venue == "away" and not is_away:
             continue
 
         try:
@@ -50,7 +60,7 @@ def compute_team_form(
         except (ValueError, TypeError):
             continue
 
-        if home == target:
+        if is_home:
             scored, conceded = hg, ag
             result = "W" if ftr == "H" else ("D" if ftr == "D" else "L")
         else:

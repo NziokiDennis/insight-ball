@@ -8,15 +8,23 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 const DATASET_LABELS: Record<string, string> = {
-  E0: "Premier League",
+  "E0-2223": "PL 2022/23",
+  "E0-2324": "PL 2023/24",
+  "E0-2425": "PL 2024/25",
+  E0: "PL 2025/26",
   E1: "Championship",
   D1: "Bundesliga",
   I1: "Serie A",
   SP1: "La Liga",
   F1: "Ligue 1",
-  N1: "Eredivisie",
-  P1: "Primeira Liga",
 };
+
+// Chronological sort order for dataset keys
+function datasetSortKey(key: string): string {
+  // E0-2223 → 2223, E0-2324 → 2324, E0 → 9999 (current season last)
+  const m = key.match(/(\d{4})$/);
+  return m ? m[1] : "9999";
+}
 
 const PICK_COLORS: Record<string, string> = {
   home: "bg-primary/15 text-primary",
@@ -64,11 +72,12 @@ function BetRow({ bet, stake }: { bet: BacktestBet; stake: number }) {
 export default function BacktestPage() {
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
   const [params, setParams] = useState<BacktestParams>({
-    dataset: "E0",
+    datasets: ["E0"],
     min_edge: 0.05,
     stake: 1.0,
     min_home_matches: 4,
     min_away_matches: 4,
+    max_odds: 4.0,
   });
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [running, setRunning] = useState(false);
@@ -76,10 +85,10 @@ export default function BacktestPage() {
   useEffect(() => {
     fetchDatasets()
       .then((ds) => {
-        setDatasets(ds);
-        if (ds.length > 0 && !ds.find((d) => d.key === params.dataset)) {
-          setParams((p) => ({ ...p, dataset: ds[0].key }));
-        }
+        const sorted = [...ds].sort((a, b) => datasetSortKey(a.key).localeCompare(datasetSortKey(b.key)));
+        setDatasets(sorted);
+        // Default: select all available seasons
+        setParams((p) => ({ ...p, datasets: sorted.map((d) => d.key) }));
       })
       .catch(() => {});
   }, []);
@@ -204,24 +213,38 @@ export default function BacktestPage() {
                   <FlaskConical className="h-4 w-4 text-primary" />
                 </div>
 
-                {/* Dataset */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dataset</label>
-                  <select
-                    value={params.dataset}
-                    onChange={(e) => setParams((p) => ({ ...p, dataset: e.target.value }))}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {datasets.length > 0 ? (
-                      datasets.map((d) => (
-                        <option key={d.key} value={d.key}>
-                          {DATASET_LABELS[d.key] ?? d.key} ({d.rows} matches)
-                        </option>
-                      ))
-                    ) : (
-                      <option value="E0">Premier League (E0)</option>
-                    )}
-                  </select>
+                {/* Seasons */}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Seasons</label>
+                  {(datasets.length > 0 ? datasets : [{ key: "E0", rows: 339 }]).map((d) => {
+                    const checked = params.datasets.includes(d.key);
+                    const toggle = () =>
+                      setParams((p) => ({
+                        ...p,
+                        datasets: checked
+                          ? p.datasets.filter((k) => k !== d.key)
+                          : [...p.datasets, d.key].sort((a, b) =>
+                              datasetSortKey(a).localeCompare(datasetSortKey(b))
+                            ),
+                      }));
+                    return (
+                      <label key={d.key} className="flex items-center gap-2.5 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={toggle}
+                          className="accent-primary h-3.5 w-3.5 rounded"
+                        />
+                        <span className="text-sm font-medium group-hover:text-primary transition-colors">
+                          {DATASET_LABELS[d.key] ?? d.key}
+                        </span>
+                        <span className="ml-auto text-xs text-muted-foreground">{d.rows} matches</span>
+                      </label>
+                    );
+                  })}
+                  <p className="text-[10px] text-muted-foreground pt-1">
+                    {params.datasets.length} season{params.datasets.length !== 1 ? "s" : ""} selected
+                  </p>
                 </div>
 
                 {/* Min edge */}
@@ -242,6 +265,27 @@ export default function BacktestPage() {
                   <div className="flex justify-between text-[10px] text-muted-foreground">
                     <span>0% (all)</span>
                     <span>20% (strict)</span>
+                  </div>
+                </div>
+
+                {/* Max odds */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Max odds cap</label>
+                    <span className="font-mono text-sm font-semibold text-primary">{params.max_odds.toFixed(1)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1.5}
+                    max={10}
+                    step={0.5}
+                    value={params.max_odds}
+                    onChange={(e) => setParams((p) => ({ ...p, max_odds: parseFloat(e.target.value) }))}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>1.5 (favorites only)</span>
+                    <span>10 (no cap)</span>
                   </div>
                 </div>
 
@@ -288,7 +332,7 @@ export default function BacktestPage() {
                 <Button
                   className="w-full"
                   onClick={handleRun}
-                  disabled={running}
+                  disabled={running || params.datasets.length === 0}
                 >
                   {running ? (
                     <>

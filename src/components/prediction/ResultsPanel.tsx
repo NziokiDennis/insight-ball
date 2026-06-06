@@ -150,14 +150,36 @@ export function ResultsPanel({
         />
       </div>
 
-      {/* Value flag */}
-      {result.recommended_outcome && (
-        <div className="surface-panel p-4 text-sm">
-          <p className="text-success font-medium">
-            Value flag: {result.recommended_outcome.toUpperCase()} has the strongest positive expected value.
-          </p>
-        </div>
-      )}
+      {/* Value flag + Kelly stake */}
+      {result.recommended_outcome && (() => {
+        const rec = result.recommended_outcome!;
+        const prob = rec === "home" ? result.home_probability / 100
+          : rec === "draw" ? result.draw_probability / 100
+          : result.away_probability / 100;
+        const odds = rec === "home" ? homeOdds : rec === "draw" ? drawOdds : awayOdds;
+        const kelly = odds > 1 ? Math.max(0, (prob * odds - 1) / (odds - 1)) : 0;
+        const quarterKelly = kelly * 0.25;
+        return (
+          <div className="surface-panel p-4 space-y-2">
+            <p className="text-sm text-success font-medium">
+              Value flag: <span className="uppercase">{rec}</span> has the strongest positive expected value.
+            </p>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground border-t border-border pt-2">
+              <div>
+                <span className="font-medium text-foreground">Full Kelly</span>
+                <span className="ml-1.5 font-mono text-primary">{(kelly * 100).toFixed(1)}%</span>
+                <span className="ml-1 text-muted-foreground">of bankroll</span>
+              </div>
+              <div className="h-3 w-px bg-border" />
+              <div>
+                <span className="font-medium text-foreground">¼ Kelly</span>
+                <span className="ml-1.5 font-mono text-primary">{(quarterKelly * 100).toFixed(1)}%</span>
+                <span className="ml-1 text-muted-foreground">(recommended)</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Model notes */}
       {result.model_notes && result.model_notes.length > 0 && (

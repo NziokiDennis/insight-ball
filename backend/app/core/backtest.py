@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Mapping
 
+from app.core.form import compute_team_form, form_1x2_probabilities
 from app.core.poisson import (
     compute_league_stats,
     compute_team_ratings,
@@ -10,13 +11,18 @@ from app.core.poisson import (
     poisson_1x2,
 )
 
+# Blend weights when both signals are available (market excluded from backtest)
+_W_POISSON = 0.60
+_W_FORM = 0.40
+
 
 @dataclass(frozen=True)
 class BacktestConfig:
-    min_edge: float = 0.03
+    min_edge: float = 0.05
     stake: float = 1.0
-    min_home_matches: int = 4   # minimum home matches before trusting Poisson
-    min_away_matches: int = 4   # minimum away matches before trusting Poisson
+    min_home_matches: int = 4
+    min_away_matches: int = 4
+    max_odds: float = 4.0  # filter out high-odds bets where model is poorly calibrated
 
 
 def _actual_outcome(row: Mapping[str, str]) -> str | None:
@@ -52,10 +58,11 @@ def backtest_rows(
     rows: Iterable[Mapping[str, str]],
     config: BacktestConfig | None = None,
 ) -> dict:
-    """Rolling-window Poisson backtest.
+    """Rolling-window Poisson + form backtest.
 
-    For each match, we compute Poisson ratings from only the matches that
-    preceded it in the list, so there is no data leakage.
+    For each match, ratings are computed from all preceding matches only —
+    no data leakage. Poisson (60%) and form (40%) are blended when both
+    signals are available; falls back to Poisson-only otherwise.
     """
     cfg = config or BacktestConfig()
     completed: list[Mapping[str, str]] = []
@@ -87,14 +94,35 @@ def backtest_rows(
                 if hr and ar:
                     lh, la = expected_goals(hr, ar, league)
                     probs = poisson_1x2(lh, la)
+
+                    # Venue-specific form (home team's home record vs away team's away record)
+                    # Falls back to combined if too few venue-specific matches
+                    home_form = (
+                        compute_team_form(completed, home_team, venue="home")
+                        or compute_team_form(completed, home_team)
+                    )
+                    away_form = (
+                        compute_team_form(completed, away_team, venue="away")
+                        or compute_team_form(completed, away_team)
+                    )
+                    if home_form and away_form:
+                        fp = form_1x2_probabilities(
+                            home_form, away_form, base_draw_probability=probs["draw"]
+                        )
+                        probs = {
+                            k: _W_POISSON * probs[k] + _W_FORM * fp[k]
+                            for k in ("home", "draw", "away")
+                        }
+
                     ev = {
                         "home": probs["home"] * odds[0] - 1.0,
                         "draw": probs["draw"] * odds[1] - 1.0,
                         "away": probs["away"] * odds[2] - 1.0,
                     }
                     pick = max(ev, key=lambda k: ev[k])
-                    if ev[pick] >= cfg.min_edge:
-                        picked_odds = {"home": odds[0], "draw": odds[1], "away": odds[2]}[pick]
+                    picked_odds_raw = {"home": odds[0], "draw": odds[1], "away": odds[2]}[pick]
+                    if ev[pick] >= cfg.min_edge and picked_odds_raw <= cfg.max_odds:
+                        picked_odds = picked_odds_raw
                         won = pick == outcome
                         pnl = round(cfg.stake * (picked_odds - 1.0) if won else -cfg.stake, 2)
                         bet_log.append({
@@ -111,7 +139,6 @@ def backtest_rows(
                             "xg_away": round(la, 2),
                         })
 
-        # Add to history AFTER evaluation — no leakage
         completed.append(row)
 
     total = len(bet_log)
