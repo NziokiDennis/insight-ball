@@ -148,9 +148,9 @@ export default function BacktestPage() {
                 <FlaskConical className="mr-2 h-3.5 w-3.5 text-primary" />
                 Backtest
               </div>
-              <div className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground">
-                Markets
-              </div>
+              <Link to="/parlay" className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Parlay
+              </Link>
             </div>
           </div>
           <div className="hidden rounded-md bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm md:block">

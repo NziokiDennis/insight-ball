@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const Home = lazy(() => import("./pages/Home"));
 const AboutPage = lazy(() => import("./pages/About"));
 const BacktestPage = lazy(() => import("./pages/Backtest"));
+const ParlayPage = lazy(() => import("./pages/Parlay"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/" element={<Home />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/backtest" element={<BacktestPage />} />
+                <Route path="/parlay" element={<ParlayPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
