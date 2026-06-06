@@ -49,8 +49,8 @@ export default function AboutPage() {
             },
             {
               icon: Shield,
-              title: "Security First",
-              desc: "Built with JWT RS256 auth, input validation, rate limiting, and zero client-side secrets. Security is architecture, not afterthought.",
+              title: "Value-First Logic",
+              desc: "A likely winner is not automatically a bet. The engine only flags an outcome when model probability creates positive expected value against the offered odds.",
             },
             {
               icon: Cpu,

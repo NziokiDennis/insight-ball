@@ -8,10 +8,8 @@ import { Header } from "@/components/layout/Header";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Home = lazy(() => import("./pages/Home"));
-const HistoryPage = lazy(() => import("./pages/History"));
-const LoginPage = lazy(() => import("./pages/Login"));
-const RegisterPage = lazy(() => import("./pages/Register"));
 const AboutPage = lazy(() => import("./pages/About"));
+const BacktestPage = lazy(() => import("./pages/Backtest"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -37,10 +35,8 @@ const App = () => (
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/history" element={<HistoryPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
                 <Route path="/about" element={<AboutPage />} />
+                <Route path="/backtest" element={<BacktestPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

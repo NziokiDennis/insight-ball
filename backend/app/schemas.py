@@ -18,7 +18,8 @@ class PredictionRequest(BaseModel):
 
 
 class BacktestRequest(BaseModel):
-    csv_path: str
+    dataset: str = "E0"
     min_edge: float = Field(default=0.03, ge=0.0, le=1.0)
     stake: float = Field(default=1.0, gt=0.0)
-
+    min_home_matches: int = Field(default=4, ge=1, le=10)
+    min_away_matches: int = Field(default=4, ge=1, le=10)

@@ -34,6 +34,17 @@ export interface PredictionResponse {
   recommended_outcome?: "home" | "draw" | "away" | null;
   most_likely_outcome?: "home" | "draw" | "away";
   model_notes?: string[];
+  home_elo?: number | null;
+  away_elo?: number | null;
+  elo_active?: boolean;
+  home_form?: TeamFormData | null;
+  away_form?: TeamFormData | null;
+  form_active?: boolean;
+  lambda_home?: number | null;
+  lambda_away?: number | null;
+  poisson_active?: boolean;
+  most_likely_scoreline?: string | null;
+  scoreline_probabilities?: { scoreline: string; probability: number }[];
 }
 
 export interface MathStep {
@@ -42,34 +53,41 @@ export interface MathStep {
   result: string;
 }
 
-export interface HistoryEntry {
-  id: string;
+export interface BacktestBet {
+  date: string;
   home_team: string;
   away_team: string;
-  home_odds: number;
-  draw_odds: number;
-  away_odds: number;
-  home_probability: number;
-  draw_probability: number;
-  away_probability: number;
-  simulations: number;
-  actual_result?: "home" | "draw" | "away" | null;
-  created_at: string;
+  pick: "home" | "draw" | "away";
+  odds: number;
+  ev: number;
+  actual: "home" | "draw" | "away";
+  won: boolean;
+  pnl: number;
+  xg_home: number;
+  xg_away: number;
 }
 
-export interface User {
-  id: string;
-  email: string;
-  username?: string;
+export interface BacktestResult {
+  evaluated_matches: number;
+  bets: number;
+  wins: number;
+  hit_rate: number;
+  profit: number;
+  roi: number;
+  bets_detail: BacktestBet[];
 }
 
-export interface AuthState {
-  user: User | null;
-  accessToken: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, username?: string) => Promise<void>;
-  logout: () => void;
-  setUser: (user: User | null, token: string | null) => void;
+export interface DatasetInfo {
+  key: string;
+  rows: number;
+}
+
+export interface TeamFormData {
+  matches: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_scored: number;
+  goals_conceded: number;
+  form_string: string;
 }

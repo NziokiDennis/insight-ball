@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { OddsInputPanel } from "@/components/prediction/OddsInputPanel";
 import { ResultsPanel } from "@/components/prediction/ResultsPanel";
@@ -87,9 +87,12 @@ export default function Home() {
                 <CircleDot className="mr-2 h-3.5 w-3.5 text-primary" />
                 Prediction
               </div>
-              <div className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground">
+              <Link
+                to="/backtest"
+                className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Backtest
-              </div>
+              </Link>
               <div className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground">
                 Markets
               </div>

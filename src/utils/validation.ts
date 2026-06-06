@@ -23,23 +23,3 @@ export const oddsSchema = z.object({
 });
 
 export type OddsFormData = z.infer<typeof oddsSchema>;
-
-export const loginSchema = z.object({
-  email: z.string().trim().email("Invalid email address"),
-  password: z.string().min(12, "Password must be at least 12 characters"),
-});
-
-export const registerSchema = z
-  .object({
-    email: z.string().trim().email("Invalid email address"),
-    username: z.string().trim().min(3, "Username must be at least 3 characters").max(30).optional(),
-    password: z.string().min(12, "Password must be at least 12 characters"),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
-
-export type LoginFormData = z.infer<typeof loginSchema>;
-export type RegisterFormData = z.infer<typeof registerSchema>;

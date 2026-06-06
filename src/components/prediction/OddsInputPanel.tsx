@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { oddsSchema, type OddsFormData } from "@/utils/validation";
 import { sliderToSimulations, simulationsToSlider, formatNumber } from "@/utils/format";
+import { fetchElo } from "@/api/predict";
 import { Flame, RotateCcw } from "lucide-react";
 
 interface OddsInputPanelProps {
@@ -13,12 +14,19 @@ interface OddsInputPanelProps {
   onClear: () => void;
 }
 
+interface EloState {
+  value: number | null;
+  loading: boolean;
+}
+
 export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelProps) {
   const [homeOdds, setHomeOdds] = useState("");
   const [drawOdds, setDrawOdds] = useState("");
   const [awayOdds, setAwayOdds] = useState("");
   const [homeTeam, setHomeTeam] = useState("");
   const [awayTeam, setAwayTeam] = useState("");
+  const [homeElo, setHomeElo] = useState<EloState>({ value: null, loading: false });
+  const [awayElo, setAwayElo] = useState<EloState>({ value: null, loading: false });
   const [sliderValue, setSliderValue] = useState([simulationsToSlider(1000)]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,18 +59,27 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
 
   const handleOddsInput = (setter: (v: string) => void, field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    // Allow only numbers and dots
     if (val && !/^[0-9]*\.?[0-9]*$/.test(val)) return;
     setter(val);
     validateField(field, val);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Block non-numeric keys except navigation
     if (["e", "E", "+", "-"].includes(e.key)) {
       e.preventDefault();
     }
   };
+
+  const handleTeamBlur = useCallback(
+    async (name: string, setElo: React.Dispatch<React.SetStateAction<EloState>>) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      setElo({ value: null, loading: true });
+      const elo = await fetchElo(trimmed);
+      setElo({ value: elo, loading: false });
+    },
+    []
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +113,8 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
     setAwayOdds("");
     setHomeTeam("");
     setAwayTeam("");
+    setHomeElo({ value: null, loading: false });
+    setAwayElo({ value: null, loading: false });
     setSliderValue([simulationsToSlider(1000)]);
     setErrors({});
     onClear();
@@ -118,34 +137,58 @@ export function OddsInputPanel({ onSubmit, isLoading, onClear }: OddsInputPanelP
         </button>
       </div>
 
-      {/* Team names (optional) */}
+      {/* Team names */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="home-team" className="text-muted-foreground text-xs uppercase tracking-wider">
-            Home Team
-          </Label>
-          <Input
-            id="home-team"
-            placeholder="e.g. Arsenal"
-            value={homeTeam}
-            onChange={(e) => setHomeTeam(e.target.value)}
-            maxLength={100}
-            className="bg-background border-border focus:border-primary"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="away-team" className="text-muted-foreground text-xs uppercase tracking-wider">
-            Away Team
-          </Label>
-          <Input
-            id="away-team"
-            placeholder="e.g. Chelsea"
-            value={awayTeam}
-            onChange={(e) => setAwayTeam(e.target.value)}
-            maxLength={100}
-            className="bg-background border-border focus:border-primary"
-          />
-        </div>
+        {[
+          {
+            id: "home-team",
+            label: "Home Team",
+            value: homeTeam,
+            setter: setHomeTeam,
+            elo: homeElo,
+            setElo: setHomeElo,
+          },
+          {
+            id: "away-team",
+            label: "Away Team",
+            value: awayTeam,
+            setter: setAwayTeam,
+            elo: awayElo,
+            setElo: setAwayElo,
+          },
+        ].map(({ id, label, value, setter, elo, setElo }) => (
+          <div key={id} className="space-y-2">
+            <Label htmlFor={id} className="text-muted-foreground text-xs uppercase tracking-wider">
+              {label}
+            </Label>
+            <Input
+              id={id}
+              placeholder="e.g. Arsenal"
+              value={value}
+              onChange={(e) => {
+                setter(e.target.value);
+                setElo({ value: null, loading: false });
+              }}
+              onBlur={() => handleTeamBlur(value, setElo)}
+              maxLength={100}
+              className="bg-background border-border focus:border-primary"
+            />
+            <div className="h-4 flex items-center">
+              {elo.loading && (
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="h-2.5 w-2.5 rounded-full border border-muted-foreground/40 border-t-primary animate-spin" />
+                  Fetching Elo…
+                </span>
+              )}
+              {elo.value !== null && !elo.loading && (
+                <span className="flex items-center gap-1.5 text-xs font-mono text-primary">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  Elo {Math.round(elo.value)}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Odds inputs */}
