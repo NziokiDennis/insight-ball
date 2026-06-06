@@ -45,6 +45,12 @@ const RESULT_COLORS: Record<string, string> = {
   away: "bg-emerald-100 text-emerald-700",
 };
 
+const RESULT_TEXT_COLORS: Record<string, string> = {
+  home: "text-primary font-semibold",
+  draw: "text-yellow-600 font-semibold",
+  away: "text-emerald-600 font-semibold",
+};
+
 function newMatch(): SlipMatch {
   return {
     id: Math.random().toString(36).slice(2),
@@ -370,7 +376,9 @@ export default function ParlayPage() {
                             <tr className="border-b border-border text-xs text-muted-foreground">
                               {analysed.map((m, i) => (
                                 <th key={m.id} className="px-3 py-2.5 font-medium whitespace-nowrap">
-                                  {m.homeTeam || `Match ${i + 1}`}
+                                  {m.homeTeam && m.awayTeam
+                                    ? `${m.homeTeam} vs ${m.awayTeam}`
+                                    : `Match ${i + 1}`}
                                 </th>
                               ))}
                               <th className="px-3 py-2.5 font-medium">Prob</th>
@@ -383,8 +391,8 @@ export default function ParlayPage() {
                               <tr key={i} className={`border-b border-border/40 text-xs transition-all hover:brightness-[0.97] ${combo.ev > 0 ? "bg-emerald-50/60" : ""}`}>
                                 {combo.outcomes.map((o, j) => (
                                   <td key={j} className="px-3 py-2 whitespace-nowrap">
-                                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${RESULT_COLORS[o.result]}`}>
-                                      {o.label.length > 13 ? o.label.slice(0, 12) + "…" : o.label}
+                                    <span className={`text-xs ${RESULT_TEXT_COLORS[o.result]}`}>
+                                      {o.result === "draw" ? "Draw" : `${o.label} WIN`}
                                     </span>
                                   </td>
                                 ))}
