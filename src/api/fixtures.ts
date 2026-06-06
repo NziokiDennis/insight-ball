@@ -8,6 +8,10 @@ export interface Fixture {
 }
 
 export async function fetchFixtures(): Promise<Fixture[]> {
-  const { data } = await apiClient.get<{ fixtures: Fixture[] }>("/api/v1/fixtures");
-  return data.fixtures;
+  try {
+    const { data } = await apiClient.get<{ fixtures: Fixture[] }>("/api/v1/fixtures");
+    return Array.isArray(data?.fixtures) ? data.fixtures : [];
+  } catch {
+    return [];
+  }
 }

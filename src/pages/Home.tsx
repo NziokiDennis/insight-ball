@@ -97,9 +97,9 @@ export default function Home() {
     setHistory(getHistory());
   }, [result]);
 
-  // Fetch upcoming fixtures on mount
+  // Fetch upcoming fixtures on mount (fetchFixtures always resolves to an array)
   useEffect(() => {
-    fetchFixtures().then(setFixtures).catch(() => {});
+    fetchFixtures().then(setFixtures);
   }, []);
 
   const handleSubmit = (data: OddsFormData) => {
