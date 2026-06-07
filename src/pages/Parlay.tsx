@@ -276,16 +276,6 @@ export default function ParlayPage() {
                     : <><Layers className="mr-2 h-4 w-4" />Analyse Outcomes</>}
                 </Button>
               </div>
-
-              <div className="dashboard-tile p-4 space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">How it works</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Each match uses the full Poisson + Elo + form model. All 3<sup>N</sup> outcome combinations are generated with joint probability and combined odds.
-                </p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  <span className="text-emerald-600 font-medium">Green rows</span> have positive EV — model probability beats the combined market price.
-                </p>
-              </div>
             </div>
 
             {/* RIGHT — Results */}
@@ -418,6 +408,17 @@ export default function ParlayPage() {
                   </div>
                 </>
               )}
+            </div>
+
+            {/* HOW IT WORKS — last on mobile, bottom of left col on desktop */}
+            <div className="dashboard-tile p-4 space-y-2 xl:col-start-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">How it works</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Each match uses the full Poisson + Elo + form model. All 3<sup>N</sup> outcome combinations are generated with joint probability and combined odds.
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="text-emerald-600 font-medium">Green rows</span> have positive EV — model probability beats the combined market price.
+              </p>
             </div>
           </div>
         </section>
