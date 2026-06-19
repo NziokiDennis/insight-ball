@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { postPredict } from "@/api/predict";
+import { fetchFixtures, fetchWCFixtures, type Fixture } from "@/api/fixtures";
 import { CalendarDays, CircleDot, FlaskConical, Plus, X, Layers, Loader2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -106,6 +107,20 @@ export default function ParlayPage() {
   const [showValueOnly, setShowValueOnly] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("probability");
   const [showAll, setShowAll] = useState(false);
+  const [eplFixtures, setEplFixtures] = useState<Fixture[]>([]);
+  const [wcFixtures, setWcFixtures] = useState<Fixture[]>([]);
+  const [fixtureTab, setFixtureTab] = useState<"epl" | "wc">("epl");
+
+  useEffect(() => {
+    fetchFixtures().then(setEplFixtures);
+    fetchWCFixtures().then(f => { setWcFixtures(f); if (f.length > 0) setFixtureTab("wc"); });
+  }, []);
+
+  const addFromFixture = (f: Fixture) => {
+    if (matches.length >= MAX_MATCHES) { toast.error(`Maximum ${MAX_MATCHES} matches`); return; }
+    setMatches(m => [...m, { ...newMatch(), homeTeam: f.home_team, awayTeam: f.away_team }]);
+    toast.success(`${f.home_team} vs ${f.away_team} added`);
+  };
 
   const addMatch = () => {
     if (matches.length < MAX_MATCHES) setMatches((m) => [...m, newMatch()]);
@@ -409,6 +424,47 @@ export default function ParlayPage() {
                 </>
               )}
             </div>
+
+            {/* Fixtures quick-fill */}
+            {(eplFixtures.length > 0 || wcFixtures.length > 0) && (
+              <div className="dashboard-tile p-4 space-y-3 xl:col-start-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setFixtureTab("epl")}
+                      className={`text-xs font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "epl" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
+                      Premier League
+                    </button>
+                    {wcFixtures.length > 0 && (
+                      <button onClick={() => setFixtureTab("wc")}
+                        className={`text-xs font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "wc" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
+                        🌍 World Cup
+                      </button>
+                    )}
+                  </div>
+                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground">Click to add a match to your slip</p>
+                <div className="space-y-1.5">
+                  {(fixtureTab === "wc" ? wcFixtures : eplFixtures).map(f => (
+                    <button key={f.id} onClick={() => addFromFixture(f)}
+                      className="w-full flex items-center justify-between rounded-md border border-border/60 bg-background px-2.5 py-2 text-xs hover:border-primary/40 hover:bg-primary/5 transition-all text-left group">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-muted-foreground whitespace-nowrap shrink-0">
+                          {new Date(f.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                        <span className="font-medium truncate">{f.home_team}</span>
+                        <span className="text-muted-foreground shrink-0">vs</span>
+                        <span className="font-medium truncate">{f.away_team}</span>
+                      </div>
+                      <Plus className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
+                    </button>
+                  ))}
+                  {(fixtureTab === "wc" ? wcFixtures : eplFixtures).length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">No upcoming fixtures</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* HOW IT WORKS — last on mobile, bottom of left col on desktop */}
             <div className="dashboard-tile p-4 space-y-2 xl:col-start-1">
