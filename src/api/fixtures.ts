@@ -7,11 +7,14 @@ export interface Fixture {
   away_team: string;
 }
 
-export async function fetchFixtures(): Promise<Fixture[]> {
+async function fetchFromEndpoint(endpoint: string): Promise<Fixture[]> {
   try {
-    const { data } = await apiClient.get<{ fixtures: Fixture[] }>("/api/v1/fixtures");
+    const { data } = await apiClient.get<{ fixtures: Fixture[] }>(endpoint);
     return Array.isArray(data?.fixtures) ? data.fixtures : [];
   } catch {
     return [];
   }
 }
+
+export const fetchFixtures = () => fetchFromEndpoint("/api/v1/fixtures");
+export const fetchWCFixtures = () => fetchFromEndpoint("/api/v1/fixtures/wc");

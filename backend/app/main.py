@@ -158,35 +158,56 @@ def list_datasets() -> dict:
     return {"datasets": datasets}
 
 
+def _parse_espn_fixtures(data: dict, name_map: dict | None = None) -> list[dict]:
+    """Shared ESPN scoreboard parser. name_map remaps display names if supplied."""
+    fixtures = []
+    for event in data.get("events", []):
+        comp = (event.get("competitions") or [{}])[0]
+        status_name = ((comp.get("status") or {}).get("type") or {}).get("name", "")
+        if status_name not in ("STATUS_SCHEDULED", "STATUS_IN_PROGRESS"):
+            continue
+        competitors = comp.get("competitors", [])
+        home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+        away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+        if not home or not away:
+            continue
+        raw_home = (home.get("team") or {}).get("displayName") or (home.get("team") or {}).get("name", "")
+        raw_away = (away.get("team") or {}).get("displayName") or (away.get("team") or {}).get("name", "")
+        fixtures.append({
+            "id": event.get("id", ""),
+            "date": event.get("date", ""),
+            "home_team": (name_map or {}).get(raw_home, raw_home),
+            "away_team": (name_map or {}).get(raw_away, raw_away),
+        })
+    return fixtures[:10]
+
+
 @app.get("/api/v1/fixtures")
 def get_fixtures() -> dict:
-    """Fetch upcoming Premier League fixtures from ESPN (free, no key required)."""
+    """Fetch upcoming Premier League fixtures from ESPN."""
     try:
         url = "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard"
         with urlopen(url, timeout=5) as r:
             data = json.loads(r.read())
-        fixtures = []
-        for event in data.get("events", []):
-            comp = (event.get("competitions") or [{}])[0]
-            status_name = ((comp.get("status") or {}).get("type") or {}).get("name", "")
-            if status_name not in ("STATUS_SCHEDULED", "STATUS_IN_PROGRESS"):
-                continue
-            competitors = comp.get("competitors", [])
-            home = next((c for c in competitors if c.get("homeAway") == "home"), None)
-            away = next((c for c in competitors if c.get("homeAway") == "away"), None)
-            if not home or not away:
-                continue
-            raw_home = (home.get("team") or {}).get("displayName") or (home.get("team") or {}).get("name", "")
-            raw_away = (away.get("team") or {}).get("displayName") or (away.get("team") or {}).get("name", "")
-            fixtures.append({
-                "id": event.get("id", ""),
-                "date": event.get("date", ""),
-                "home_team": _ESPN_TO_FD.get(raw_home, raw_home),
-                "away_team": _ESPN_TO_FD.get(raw_away, raw_away),
-            })
-        return {"fixtures": fixtures[:10]}
+        return {"fixtures": _parse_espn_fixtures(data, _ESPN_TO_FD)}
     except (URLError, OSError, json.JSONDecodeError, KeyError):
         return {"fixtures": []}
+
+
+@app.get("/api/v1/fixtures/wc")
+def get_wc_fixtures() -> dict:
+    """Fetch upcoming FIFA World Cup 2026 fixtures from ESPN."""
+    for slug in ("fifa.world", "fifa.world.2026"):
+        try:
+            url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
+            with urlopen(url, timeout=6) as r:
+                data = json.loads(r.read())
+            fixtures = _parse_espn_fixtures(data)  # no name remapping for national teams
+            if fixtures:
+                return {"fixtures": fixtures}
+        except (URLError, OSError, json.JSONDecodeError, KeyError):
+            continue
+    return {"fixtures": []}
 
 
 @app.post("/api/v1/backtest")

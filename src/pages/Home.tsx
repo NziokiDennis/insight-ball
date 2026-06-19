@@ -8,7 +8,7 @@ import { usePrediction } from "@/hooks/usePrediction";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { oddsSchema, type OddsFormData } from "@/utils/validation";
 import { pushPrediction, getHistory, clearHistory, type HistoryEntry } from "@/utils/predictionHistory";
-import { fetchFixtures, type Fixture } from "@/api/fixtures";
+import { fetchFixtures, fetchWCFixtures, type Fixture } from "@/api/fixtures";
 import {
   Activity,
   CalendarDays,
@@ -50,6 +50,8 @@ export default function Home() {
   const resultsRef = useRef<HTMLDivElement>(null);
   const [history, setHistory] = useState<HistoryEntry[]>(() => getHistory());
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [wcFixtures, setWcFixtures] = useState<Fixture[]>([]);
+  const [fixtureTab, setFixtureTab] = useState<"epl" | "wc">("epl");
   const [prefill, setPrefill] = useState<{ homeTeam: string; awayTeam: string } | null>(null);
 
   // Load from shared URL params
@@ -97,9 +99,10 @@ export default function Home() {
     setHistory(getHistory());
   }, [result]);
 
-  // Fetch upcoming fixtures on mount (fetchFixtures always resolves to an array)
+  // Fetch upcoming fixtures on mount
   useEffect(() => {
     fetchFixtures().then(setFixtures);
+    fetchWCFixtures().then(setWcFixtures);
   }, []);
 
   const handleSubmit = (data: OddsFormData) => {
@@ -267,17 +270,30 @@ export default function Home() {
                   />
                 ) : (
                   <div className="space-y-4">
-                    {fixtures.length > 0 && (
+                    {(fixtures.length > 0 || wcFixtures.length > 0) && (
                       <div className="dashboard-tile p-5">
                         <div className="flex items-center justify-between border-b border-border pb-3 mb-3">
-                          <div>
-                            <h2 className="font-display text-base font-semibold">Premier League — Upcoming</h2>
-                            <p className="text-xs text-muted-foreground mt-0.5">Click a fixture to fill team names</p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setFixtureTab("epl")}
+                              className={`text-sm font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "epl" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                              Premier League
+                            </button>
+                            {wcFixtures.length > 0 && (
+                              <button
+                                onClick={() => setFixtureTab("wc")}
+                                className={`text-sm font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "wc" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+                              >
+                                🌍 World Cup 2026
+                              </button>
+                            )}
                           </div>
                           <CalendarDays className="h-4 w-4 text-muted-foreground" />
                         </div>
+                        <p className="text-xs text-muted-foreground mb-3">Click a fixture to fill team names</p>
                         <div className="space-y-2">
-                          {fixtures.map((f) => (
+                          {(fixtureTab === "wc" ? wcFixtures : fixtures).map((f) => (
                             <button
                               key={f.id}
                               onClick={() => handleFixtureSelect(f)}
@@ -292,6 +308,9 @@ export default function Home() {
                               <span className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">Predict →</span>
                             </button>
                           ))}
+                          {(fixtureTab === "wc" ? wcFixtures : fixtures).length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-4">No upcoming fixtures</p>
+                          )}
                         </div>
                       </div>
                     )}
