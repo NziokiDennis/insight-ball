@@ -110,21 +110,22 @@ def _supa_update_result(prediction_id: str, result: str) -> bool:
 
 
 _RESULT_LEAGUES = [
-    "eng.1",            # Premier League
-    "fifa.world",       # World Cup 2026
+    "eng.1",               # Premier League
+    "fifa.world",          # World Cup 2026
     "fifa.world.2026",
-    "uefa.champions",   # Champions League
-    "uefa.europa",      # Europa League
-    "uefa.europa.conf", # Conference League
-    "eng.2",            # Championship
-    "esp.1",            # La Liga
-    "ger.1",            # Bundesliga
-    "ita.1",            # Serie A
-    "fra.1",            # Ligue 1
-    "ned.1",            # Eredivisie
-    "por.1",            # Primeira Liga
-    "tur.1",            # Super Lig
-    "sco.1",            # Scottish Premiership
+    "uefa.champions",      # Champions League
+    "uefa.champions_qual", # Champions League qualifying
+    "uefa.europa",         # Europa League
+    "uefa.europa.conf",    # Conference League
+    "eng.2",               # Championship
+    "esp.1",               # La Liga
+    "ger.1",               # Bundesliga
+    "ita.1",               # Serie A
+    "fra.1",               # Ligue 1
+    "ned.1",               # Eredivisie
+    "por.1",               # Primeira Liga
+    "tur.1",               # Super Lig
+    "sco.1",               # Scottish Premiership
 ]
 
 
@@ -422,9 +423,9 @@ def update_results() -> dict:
         except (ValueError, KeyError, TypeError):
             continue
 
-        # Check the prediction date and the following day (late-night games)
+        # Check 7 days back through 2 days forward — handles past-game predictions and late-night fixtures
         result_found: str | None = None
-        for delta in (0, 1):
+        for delta in (0, 1, -1, -2, -3, -4, -5, -6, -7, 2):
             date_str = (match_dt + timedelta(days=delta)).strftime("%Y%m%d")
             if date_str not in date_cache:
                 date_cache[date_str] = _fetch_completed_for_date(date_str)
