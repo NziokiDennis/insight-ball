@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { fetchPredictions, type SavedPrediction } from "@/api/predictions";
-import { CalendarDays, RefreshCw, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { CalendarDays, RefreshCw, CheckCircle2, XCircle, Clock, CircleDot, FlaskConical, Layers } from "lucide-react";
 
 const OUTCOME_LABEL: Record<string, string> = {
   home: "Home",
@@ -88,6 +89,23 @@ export default function History() {
               <span className="h-3 w-3 rounded-full bg-[#ffbd2e]" />
               <span className="h-3 w-3 rounded-full bg-[#28c840]" />
             </div>
+            <div className="hidden items-end gap-1 sm:flex">
+              <Link to="/" className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+                <CircleDot className="h-3.5 w-3.5" />Prediction
+              </Link>
+              <Link to="/backtest" className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+                <FlaskConical className="h-3.5 w-3.5" />Backtest
+              </Link>
+              <Link to="/parlay" className="rounded-t-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5" />Parlay
+              </Link>
+              <div className="mac-tab">
+                <Clock className="mr-2 h-3.5 w-3.5 text-primary" />History
+              </div>
+            </div>
+          </div>
+          <div className="hidden rounded-md bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm md:block">
+            Prediction log
           </div>
         </div>
 
