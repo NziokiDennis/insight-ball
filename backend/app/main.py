@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import difflib
 import json
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError
@@ -61,6 +63,121 @@ def _supa_fetch(limit: int = 100) -> list[dict]:
             return json.loads(r.read())
     except Exception:
         return []
+
+
+def _supa_fetch_pending() -> list[dict]:
+    """Fetch predictions that have no actual result yet."""
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return []
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/predictions?actual_result=is.null&order=created_at.desc&limit=500",
+            headers={
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Accept": "application/json",
+            },
+        )
+        with urlopen(req, timeout=6) as r:
+            return json.loads(r.read())
+    except Exception:
+        return []
+
+
+def _supa_update_result(prediction_id: str, result: str) -> bool:
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return False
+    try:
+        data = {
+            "actual_result": result,
+            "result_fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/predictions?id=eq.{prediction_id}",
+            data=json.dumps(data).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Prefer": "return=minimal",
+            },
+            method="PATCH",
+        )
+        with urlopen(req, timeout=6) as r:
+            return r.status in (200, 204)
+    except Exception:
+        return False
+
+
+_RESULT_LEAGUES = [
+    "eng.1",            # Premier League
+    "fifa.world",       # World Cup 2026
+    "fifa.world.2026",
+    "uefa.champions",   # Champions League
+    "uefa.europa",      # Europa League
+    "uefa.europa.conf", # Conference League
+    "eng.2",            # Championship
+    "esp.1",            # La Liga
+    "ger.1",            # Bundesliga
+    "ita.1",            # Serie A
+    "fra.1",            # Ligue 1
+    "ned.1",            # Eredivisie
+    "por.1",            # Primeira Liga
+    "tur.1",            # Super Lig
+    "sco.1",            # Scottish Premiership
+]
+
+
+def _normalise_name(name: str) -> str:
+    name = name.lower()
+    for token in (" fc", " sc", " ac", " cf", " utd", " united", " city",
+                  " town", " wanderers", " rovers", " athletic", " albion",
+                  " hotspur", " wednesday", " county"):
+        name = name.replace(token, "")
+    return name.strip()
+
+
+def _names_match(a: str, b: str, threshold: float = 0.78) -> bool:
+    return difflib.SequenceMatcher(None, _normalise_name(a), _normalise_name(b)).ratio() >= threshold
+
+
+def _fetch_completed_for_date(date_str: str) -> list[dict]:
+    """Return all STATUS_FINAL matches across known leagues for YYYYMMDD."""
+    matches: list[dict] = []
+    for league in _RESULT_LEAGUES:
+        try:
+            url = (
+                f"https://site.api.espn.com/apis/site/v2/sports/soccer"
+                f"/{league}/scoreboard?dates={date_str}"
+            )
+            with urlopen(url, timeout=6) as r:
+                data = json.loads(r.read())
+            for event in data.get("events", []):
+                comp = (event.get("competitions") or [{}])[0]
+                status = ((comp.get("status") or {}).get("type") or {}).get("name", "")
+                if status != "STATUS_FINAL":
+                    continue
+                competitors = comp.get("competitors", [])
+                home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+                away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+                if not home or not away:
+                    continue
+                try:
+                    hs = int(home.get("score", -1))
+                    as_ = int(away.get("score", -1))
+                except (ValueError, TypeError):
+                    continue
+                if hs < 0 or as_ < 0:
+                    continue
+                matches.append({
+                    "home_team": (home.get("team") or {}).get("displayName", ""),
+                    "away_team": (away.get("team") or {}).get("displayName", ""),
+                    "home_score": hs,
+                    "away_score": as_,
+                })
+        except (URLError, OSError, json.JSONDecodeError, KeyError):
+            continue
+    return matches
 
 
 class SavePredictionRequest(BaseModel):
@@ -281,6 +398,50 @@ def save_prediction(request: SavePredictionRequest) -> dict:
 def get_predictions(limit: int = 100) -> dict:
     rows = _supa_fetch(limit)
     return {"predictions": rows}
+
+
+@app.post("/api/v1/results/update")
+def update_results() -> dict:
+    """Scan ESPN for completed scores and fill actual_result on pending predictions."""
+    pending = _supa_fetch_pending()
+    if not pending:
+        return {"checked": 0, "updated": 0, "details": []}
+
+    date_cache: dict[str, list[dict]] = {}
+    updated = 0
+    details = []
+
+    for pred in pending:
+        home = pred.get("home_team", "").strip()
+        away = pred.get("away_team", "").strip()
+        if not home or not away:
+            continue
+
+        try:
+            match_dt = datetime.fromisoformat(pred["created_at"].replace("Z", "+00:00"))
+        except (ValueError, KeyError, TypeError):
+            continue
+
+        # Check the prediction date and the following day (late-night games)
+        result_found: str | None = None
+        for delta in (0, 1):
+            date_str = (match_dt + timedelta(days=delta)).strftime("%Y%m%d")
+            if date_str not in date_cache:
+                date_cache[date_str] = _fetch_completed_for_date(date_str)
+            for m in date_cache[date_str]:
+                if _names_match(home, m["home_team"]) and _names_match(away, m["away_team"]):
+                    hs, as_ = m["home_score"], m["away_score"]
+                    result_found = "home" if hs > as_ else ("draw" if hs == as_ else "away")
+                    break
+            if result_found:
+                break
+
+        if result_found:
+            if _supa_update_result(pred["id"], result_found):
+                updated += 1
+                details.append({"match": f"{home} vs {away}", "result": result_found})
+
+    return {"checked": len(pending), "updated": updated, "details": details}
 
 
 @app.post("/api/v1/backtest")
