@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { fetchPredictions, type SavedPrediction } from "@/api/predictions";
+import { apiClient } from "@/api/client";
 import { CalendarDays, RefreshCw, CheckCircle2, XCircle, Clock, CircleDot, FlaskConical, Layers } from "lucide-react";
 
 const OUTCOME_LABEL: Record<string, string> = {
@@ -46,6 +47,38 @@ function expectedResultLabel(createdAt: string): string {
     return "Updating soon";
   }
   return `By ${matchDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} 23:59`;
+}
+
+async function markResult(id: string, result: string, onDone: () => void) {
+  try {
+    await apiClient.patch(`/api/v1/predictions/${id}/result`, { result });
+    onDone();
+  } catch {
+    // silent
+  }
+}
+
+function ManualResultPicker({ id, onDone }: { id: string; onDone: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const handle = async (result: string) => {
+    setSaving(true);
+    await markResult(id, result, onDone);
+    setSaving(false);
+  };
+  return (
+    <div className="flex items-center gap-1">
+      {(["home", "draw", "away"] as const).map((r) => (
+        <button
+          key={r}
+          disabled={saving}
+          onClick={() => handle(r)}
+          className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase transition-colors hover:opacity-80 disabled:opacity-40 ${OUTCOME_COLOR[r]}`}
+        >
+          {OUTCOME_LABEL[r]}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function StatusBadge({ prediction, actual, createdAt }: { prediction: string | null; actual: string | null; createdAt: string }) {
@@ -228,7 +261,11 @@ export default function History() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <StatusBadge prediction={p.recommended_outcome} actual={p.actual_result} createdAt={p.created_at} />
+                            {p.actual_result ? (
+                              <StatusBadge prediction={p.recommended_outcome} actual={p.actual_result} createdAt={p.created_at} />
+                            ) : (
+                              <ManualResultPicker id={p.id} onDone={load} />
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -246,6 +283,9 @@ export default function History() {
                         </span>
                         <StatusBadge prediction={p.recommended_outcome} actual={p.actual_result} createdAt={p.created_at} />
                       </div>
+                      {p.actual_result === null && (
+                        <ManualResultPicker id={p.id} onDone={load} />
+                      )}
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>H {p.home_prob}%</span>
                         <span>D {p.draw_prob}%</span>
