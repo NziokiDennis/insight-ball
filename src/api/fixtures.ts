@@ -18,3 +18,4 @@ async function fetchFromEndpoint(endpoint: string): Promise<Fixture[]> {
 
 export const fetchFixtures = () => fetchFromEndpoint("/api/v1/fixtures");
 export const fetchWCFixtures = () => fetchFromEndpoint("/api/v1/fixtures/wc");
+export const fetchCLFixtures = () => fetchFromEndpoint("/api/v1/fixtures/cl");

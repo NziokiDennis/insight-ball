@@ -389,6 +389,22 @@ def get_wc_fixtures() -> dict:
     return {"fixtures": []}
 
 
+@app.get("/api/v1/fixtures/cl")
+def get_cl_fixtures() -> dict:
+    """Fetch upcoming Champions League qualifying fixtures from ESPN."""
+    for slug in ("uefa.champions_qual", "uefa.champions"):
+        try:
+            url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
+            with urlopen(url, timeout=6) as r:
+                data = json.loads(r.read())
+            fixtures = _parse_espn_fixtures(data)
+            if fixtures:
+                return {"fixtures": fixtures}
+        except (URLError, OSError, json.JSONDecodeError, KeyError):
+            continue
+    return {"fixtures": []}
+
+
 @app.post("/api/v1/predictions/save")
 def save_prediction(request: SavePredictionRequest) -> dict:
     ok = _supa_insert(request.model_dump())
