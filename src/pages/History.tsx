@@ -30,12 +30,30 @@ function formatDate(iso: string): string {
   }
 }
 
-function StatusBadge({ prediction, actual }: { prediction: string | null; actual: string | null }) {
+function expectedResultLabel(createdAt: string): string {
+  const matchDate = new Date(createdAt);
+  const today = new Date();
+  const matchDay = matchDate.toDateString();
+  const todayDay = today.toDateString();
+
+  const deadline = new Date(matchDate);
+  deadline.setHours(23, 59, 0, 0);
+
+  if (matchDay === todayDay) {
+    return "By tonight 23:59";
+  }
+  if (deadline < today) {
+    return "Updating soon";
+  }
+  return `By ${matchDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} 23:59`;
+}
+
+function StatusBadge({ prediction, actual, createdAt }: { prediction: string | null; actual: string | null; createdAt: string }) {
   if (!actual) {
     return (
-      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Clock className="h-3 w-3" />
-        Pending
+      <span className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
+        <Clock className="h-3 w-3 shrink-0" />
+        {expectedResultLabel(createdAt)}
       </span>
     );
   }
@@ -210,7 +228,7 @@ export default function History() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <StatusBadge prediction={p.recommended_outcome} actual={p.actual_result} />
+                            <StatusBadge prediction={p.recommended_outcome} actual={p.actual_result} createdAt={p.created_at} />
                           </td>
                         </tr>
                       ))}
@@ -226,7 +244,7 @@ export default function History() {
                         <span className="font-medium text-sm">
                           {p.home_team || "Home"} <span className="text-muted-foreground font-normal text-xs">vs</span> {p.away_team || "Away"}
                         </span>
-                        <StatusBadge prediction={p.recommended_outcome} actual={p.actual_result} />
+                        <StatusBadge prediction={p.recommended_outcome} actual={p.actual_result} createdAt={p.created_at} />
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>H {p.home_prob}%</span>
