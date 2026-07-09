@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { oddsSchema, type OddsFormData } from "@/utils/validation";
 import { pushPrediction, getHistory, clearHistory, type HistoryEntry } from "@/utils/predictionHistory";
 import { fetchFixtures, fetchWCFixtures, type Fixture } from "@/api/fixtures";
+import { savePrediction } from "@/api/predictions";
 import {
   Activity,
   CalendarDays,
@@ -97,6 +98,19 @@ export default function Home() {
       awayProb: result.away_probability,
     });
     setHistory(getHistory());
+    savePrediction({
+      home_team: lastInput.home_team,
+      away_team: lastInput.away_team,
+      home_odds: lastInput.home_odds,
+      draw_odds: lastInput.draw_odds,
+      away_odds: lastInput.away_odds,
+      simulations: lastInput.simulations,
+      home_prob: result.home_probability,
+      draw_prob: result.draw_probability,
+      away_prob: result.away_probability,
+      recommended_outcome: result.recommended_outcome ?? null,
+      model_notes: result.model_notes ?? [],
+    });
   }, [result]);
 
   // Fetch upcoming fixtures on mount

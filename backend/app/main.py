@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import json
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 from urllib.error import URLError
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from app.core.backtest import BacktestConfig, backtest_rows
 from app.core.form import compute_team_form
@@ -16,6 +19,64 @@ from app.core.poisson import compute_league_stats, compute_team_ratings, expecte
 from app.data_sources.clubelo import fetch_current_elo
 from app.data_sources.football_data import read_csv
 from app.schemas import BacktestRequest, PredictionRequest
+
+_SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+_SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+
+def _supa_insert(data: dict) -> bool:
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return False
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/predictions",
+            data=json.dumps(data).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Prefer": "return=minimal",
+            },
+            method="POST",
+        )
+        with urlopen(req, timeout=6) as r:
+            return r.status in (200, 201)
+    except Exception:
+        return False
+
+
+def _supa_fetch(limit: int = 100) -> list[dict]:
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return []
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/predictions?order=created_at.desc&limit={limit}",
+            headers={
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Accept": "application/json",
+            },
+        )
+        with urlopen(req, timeout=6) as r:
+            return json.loads(r.read())
+    except Exception:
+        return []
+
+
+class SavePredictionRequest(BaseModel):
+    home_team: str = ""
+    away_team: str = ""
+    home_odds: float = 0
+    draw_odds: float = 0
+    away_odds: float = 0
+    simulations: int = 1000
+    home_prob: float = 0
+    draw_prob: float = 0
+    away_prob: float = 0
+    recommended_outcome: str | None = None
+    model_notes: list[str] = []
+    league: str = "unknown"
+
 
 _ESPN_TO_FD: dict[str, str] = {
     "Manchester United": "Man United",
@@ -208,6 +269,18 @@ def get_wc_fixtures() -> dict:
         except (URLError, OSError, json.JSONDecodeError, KeyError):
             continue
     return {"fixtures": []}
+
+
+@app.post("/api/v1/predictions/save")
+def save_prediction(request: SavePredictionRequest) -> dict:
+    ok = _supa_insert(request.model_dump())
+    return {"saved": ok}
+
+
+@app.get("/api/v1/predictions")
+def get_predictions(limit: int = 100) -> dict:
+    rows = _supa_fetch(limit)
+    return {"predictions": rows}
 
 
 @app.post("/api/v1/backtest")

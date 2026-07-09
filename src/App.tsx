@@ -7,13 +7,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/layout/Header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CircleDot, BarChart2, Layers } from "lucide-react";
+import { CircleDot, BarChart2, Layers, Clock } from "lucide-react";
 import Home from "./pages/Home";
 
 // Secondary pages are lazy — Home loads eagerly since it's the entry point
 const AboutPage = lazy(() => import("./pages/About"));
 const BacktestPage = lazy(() => import("./pages/Backtest"));
 const ParlayPage = lazy(() => import("./pages/Parlay"));
+const HistoryPage = lazy(() => import("./pages/History"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const NAV_ITEMS = [
   { to: "/", label: "Predict", icon: CircleDot, end: true },
   { to: "/backtest", label: "Backtest", icon: BarChart2, end: false },
   { to: "/parlay", label: "Parlay", icon: Layers, end: false },
+  { to: "/history", label: "History", icon: Clock, end: false },
 ];
 
 function MobileNav() {
@@ -107,6 +109,7 @@ const App = () => (
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/backtest" element={<BacktestPage />} />
                   <Route path="/parlay" element={<ParlayPage />} />
+                  <Route path="/history" element={<HistoryPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
