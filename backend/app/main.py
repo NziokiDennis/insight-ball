@@ -26,9 +26,10 @@ _SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 _SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
 
-def _supa_insert(data: dict) -> bool:
+def _supa_insert(data: dict) -> tuple[bool, str]:
+    """Returns (success, error_message)."""
     if not _SUPABASE_URL or not _SUPABASE_KEY:
-        return False
+        return False, "SUPABASE_URL or SUPABASE_KEY env var not set"
     try:
         req = Request(
             f"{_SUPABASE_URL}/rest/v1/predictions",
@@ -42,9 +43,9 @@ def _supa_insert(data: dict) -> bool:
             method="POST",
         )
         with urlopen(req, timeout=6) as r:
-            return r.status in (200, 201)
-    except Exception:
-        return False
+            return r.status in (200, 201), ""
+    except Exception as e:
+        return False, str(e)
 
 
 def _supa_fetch(limit: int = 100) -> list[dict]:
@@ -107,6 +108,25 @@ def _supa_update_result(prediction_id: str, result: str) -> bool:
             return r.status in (200, 204)
     except Exception:
         return False
+
+
+def _supa_health() -> dict:
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return {"ok": False, "error": "env vars missing", "url_set": bool(_SUPABASE_URL), "key_set": bool(_SUPABASE_KEY)}
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/predictions?limit=1&order=created_at.desc",
+            headers={
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Accept": "application/json",
+            },
+        )
+        with urlopen(req, timeout=6) as r:
+            body = json.loads(r.read())
+            return {"ok": True, "http_status": r.status, "row_count_sample": len(body), "sample": body[:1]}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "url_prefix": _SUPABASE_URL[:40]}
 
 
 _RESULT_LEAGUES = [
@@ -405,10 +425,52 @@ def get_cl_fixtures() -> dict:
     return {"fixtures": []}
 
 
+@app.get("/api/v1/results/debug")
+def debug_results(date: str = "", league: str = "fifa.world") -> dict:
+    """Debug: show raw ESPN completed matches for a given date (YYYYMMDD) and league."""
+    if not date:
+        date = datetime.now(timezone.utc).strftime("%Y%m%d")
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/scoreboard?dates={date}"
+    try:
+        with urlopen(url, timeout=8) as r:
+            data = json.loads(r.read())
+        events = []
+        for event in data.get("events", []):
+            comp = (event.get("competitions") or [{}])[0]
+            status = ((comp.get("status") or {}).get("type") or {}).get("name", "")
+            competitors = comp.get("competitors", [])
+            home = next((c for c in competitors if c.get("homeAway") == "home"), {})
+            away = next((c for c in competitors if c.get("homeAway") == "away"), {})
+            events.append({
+                "status": status,
+                "home": (home.get("team") or {}).get("displayName", ""),
+                "away": (away.get("team") or {}).get("displayName", ""),
+                "score": f"{home.get('score','?')}-{away.get('score','?')}",
+            })
+        return {"url": url, "total_events": len(events), "events": events}
+    except Exception as e:
+        return {"url": url, "error": str(e)}
+
+
+@app.patch("/api/v1/predictions/{prediction_id}/result")
+def set_result_manually(prediction_id: str, body: dict) -> dict:
+    """Manually set actual_result for a prediction."""
+    result = body.get("result")
+    if result not in ("home", "draw", "away"):
+        raise HTTPException(status_code=400, detail="result must be home, draw or away")
+    ok = _supa_update_result(prediction_id, result)
+    return {"updated": ok}
+
+
 @app.post("/api/v1/predictions/save")
 def save_prediction(request: SavePredictionRequest) -> dict:
-    ok = _supa_insert(request.model_dump())
-    return {"saved": ok}
+    ok, err = _supa_insert(request.model_dump())
+    return {"saved": ok, "error": err if not ok else None}
+
+
+@app.get("/api/v1/supabase/health")
+def supabase_health() -> dict:
+    return _supa_health()
 
 
 @app.get("/api/v1/predictions")

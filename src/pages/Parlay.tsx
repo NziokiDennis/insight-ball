@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { postPredict } from "@/api/predict";
 import { fetchFixtures, fetchWCFixtures, fetchCLFixtures, type Fixture } from "@/api/fixtures";
+import { savePrediction } from "@/api/predictions";
 import { CalendarDays, CircleDot, FlaskConical, Plus, X, Layers, Loader2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -159,6 +160,14 @@ export default function ParlayPage() {
               home_team: m.homeTeam.trim(), away_team: m.awayTeam.trim(),
               simulations: 500,
             });
+            savePrediction({
+              home_team: m.homeTeam.trim(), away_team: m.awayTeam.trim(),
+              home_odds: h, draw_odds: d, away_odds: a, simulations: 500,
+              home_prob: r.home_probability, draw_prob: r.draw_probability, away_prob: r.away_probability,
+              recommended_outcome: r.recommended_outcome ?? null,
+              model_notes: r.model_notes ?? [],
+              league: "parlay",
+            }).catch(() => {});
             return { id: m.id, homeTeam: m.homeTeam.trim(), awayTeam: m.awayTeam.trim(), homeOdds: h, drawOdds: d, awayOdds: a, homeProb: r.home_probability, drawProb: r.draw_probability, awayProb: r.away_probability };
           } catch {
             const dv = devig(h, d, a);
