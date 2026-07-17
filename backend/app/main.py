@@ -501,9 +501,9 @@ def update_results() -> dict:
         except (ValueError, KeyError, TypeError):
             continue
 
-        # Check 7 days back through 2 days forward — handles past-game predictions and late-night fixtures
+        # Check 14 days forward and 14 days back — handles predictions made before/after the game
         result_found: str | None = None
-        for delta in (0, 1, -1, -2, -3, -4, -5, -6, -7, 2):
+        for delta in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14):
             date_str = (match_dt + timedelta(days=delta)).strftime("%Y%m%d")
             if date_str not in date_cache:
                 date_cache[date_str] = _fetch_completed_for_date(date_str)
