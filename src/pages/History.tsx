@@ -111,14 +111,17 @@ export default function History() {
   useEffect(() => { load(); }, []);
 
   const resolved = predictions.filter((p) => p.actual_result !== null);
-  const bets = resolved.filter((p) => p.recommended_outcome !== null);
-  const correct = bets.filter((p) => p.recommended_outcome === p.actual_result);
-  const accuracy = bets.length > 0 ? Math.round((correct.length / bets.length) * 100) : null;
+  const correct = resolved.filter((p) => {
+    const probs = { home: p.home_prob, draw: p.draw_prob, away: p.away_prob };
+    const predicted = (Object.keys(probs) as Array<"home" | "draw" | "away">).reduce((a, b) => probs[a] >= probs[b] ? a : b);
+    return predicted === p.actual_result;
+  });
+  const accuracy = resolved.length > 0 ? Math.round((correct.length / resolved.length) * 100) : null;
 
   const stats = [
-    { label: "Total predictions", value: predictions.length || "--", dot: "bg-primary" },
-    { label: "Resolved", value: resolved.length || "--", dot: "bg-warning" },
-    { label: "Correct calls", value: correct.length || "--", dot: "bg-secondary" },
+    { label: "Total predictions", value: predictions.length > 0 ? predictions.length : "--", dot: "bg-primary" },
+    { label: "Resolved", value: resolved.length > 0 ? resolved.length : "--", dot: "bg-warning" },
+    { label: "Correct calls", value: resolved.length > 0 ? correct.length : "--", dot: "bg-secondary" },
     { label: "Accuracy", value: accuracy !== null ? `${accuracy}%` : "--", dot: "bg-muted-foreground" },
   ];
 
