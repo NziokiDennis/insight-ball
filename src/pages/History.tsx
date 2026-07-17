@@ -40,9 +40,9 @@ function exportCSV(predictions: SavedPrediction[]) {
     ["Date", "Match", "H%", "D%", "A%", "Actual Result"],
     ...predictions.map((p) => {
       let result = "";
-      if (p.actual_result === "home") result = `${abbr(p.home_team)} WIN`;
+      if (p.actual_result === "home") result = `${abbr(p.home_team)} WON`;
       else if (p.actual_result === "draw") result = "DRAW";
-      else if (p.actual_result === "away") result = `${abbr(p.away_team)} WIN`;
+      else if (p.actual_result === "away") result = `${abbr(p.away_team)} WON`;
       return [
         new Date(p.created_at).toLocaleDateString("en-GB"),
         `${p.home_team} vs ${p.away_team}`,
@@ -245,7 +245,7 @@ export default function History() {
                           <td className="px-4 py-3 text-center">
                             {p.actual_result === "home" && (
                               <span className="rounded px-2 py-0.5 text-[11px] font-semibold uppercase bg-primary/15 text-primary">
-                                {abbr(p.home_team)} WIN
+                                {abbr(p.home_team)} WON
                               </span>
                             )}
                             {p.actual_result === "draw" && (
@@ -255,7 +255,7 @@ export default function History() {
                             )}
                             {p.actual_result === "away" && (
                               <span className="rounded px-2 py-0.5 text-[11px] font-semibold uppercase bg-emerald-100 text-emerald-700">
-                                {abbr(p.away_team)} WIN
+                                {abbr(p.away_team)} WON
                               </span>
                             )}
                             {!p.actual_result && (
