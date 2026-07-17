@@ -176,7 +176,8 @@ def _fetch_completed_for_date(date_str: str) -> list[dict]:
             for event in data.get("events", []):
                 comp = (event.get("competitions") or [{}])[0]
                 status = ((comp.get("status") or {}).get("type") or {}).get("name", "")
-                if status not in ("STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_FT", "STATUS_FINAL_PEN"):
+                if status not in ("STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_FT",
+                                  "STATUS_FINAL_PEN", "STATUS_FINAL_AET"):
                     continue
                 competitors = comp.get("competitors", [])
                 home = next((c for c in competitors if c.get("homeAway") == "home"), None)
