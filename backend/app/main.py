@@ -503,12 +503,13 @@ def get_predictions(limit: int = 100) -> dict:
     return {"predictions": rows}
 
 
+@app.get("/api/v1/results/update")
 @app.post("/api/v1/results/update")
 def update_results() -> dict:
     """Scan ESPN for completed scores and fill actual_result on pending predictions."""
     pending = _supa_fetch_pending()
     if not pending:
-        return {"checked": 0, "updated": 0, "details": []}
+        return {"checked": 0, "updated": 0, "details": [], "note": "no pending predictions found in supabase"}
 
     date_cache: dict[str, list[dict]] = {}
     updated = 0
@@ -540,9 +541,12 @@ def update_results() -> dict:
                 break
 
         if result_found:
-            if _supa_update_result(pred["id"], result_found):
+            ok = _supa_update_result(pred["id"], result_found)
+            if ok:
                 updated += 1
-                details.append({"match": f"{home} vs {away}", "result": result_found})
+            details.append({"match": f"{home} vs {away}", "result": result_found, "db_saved": ok})
+        else:
+            details.append({"match": f"{home} vs {away}", "result": None, "note": "no ESPN match found in ±14 day window"})
 
     return {"checked": len(pending), "updated": updated, "details": details}
 
