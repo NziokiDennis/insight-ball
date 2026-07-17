@@ -91,12 +91,7 @@ function StatusBadge({ prediction, actual, createdAt }: { prediction: string | n
     );
   }
   if (!prediction) {
-    return (
-      <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
-        <span className="h-3.5 w-3.5 inline-flex items-center justify-center">–</span>
-        No bet
-      </span>
-    );
+    return <span className="text-muted-foreground text-sm">–</span>;
   }
   const correct = prediction === actual;
   return correct ? (
