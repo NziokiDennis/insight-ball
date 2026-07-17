@@ -27,6 +27,7 @@ interface AnalysedMatch {
   homeProb: number;
   drawProb: number;
   awayProb: number;
+  _raw: import("@/types").PredictionResponse | null;
 }
 
 interface Combination {
@@ -160,18 +161,10 @@ export default function ParlayPage() {
               home_team: m.homeTeam.trim(), away_team: m.awayTeam.trim(),
               simulations: 500,
             });
-            savePrediction({
-              home_team: m.homeTeam.trim(), away_team: m.awayTeam.trim(),
-              home_odds: h, draw_odds: d, away_odds: a, simulations: 500,
-              home_prob: r.home_probability, draw_prob: r.draw_probability, away_prob: r.away_probability,
-              recommended_outcome: r.recommended_outcome ?? null,
-              model_notes: r.model_notes ?? [],
-              league: "parlay",
-            }).catch(() => {});
-            return { id: m.id, homeTeam: m.homeTeam.trim(), awayTeam: m.awayTeam.trim(), homeOdds: h, drawOdds: d, awayOdds: a, homeProb: r.home_probability, drawProb: r.draw_probability, awayProb: r.away_probability };
+            return { id: m.id, homeTeam: m.homeTeam.trim(), awayTeam: m.awayTeam.trim(), homeOdds: h, drawOdds: d, awayOdds: a, homeProb: r.home_probability, drawProb: r.draw_probability, awayProb: r.away_probability, _raw: r };
           } catch {
             const dv = devig(h, d, a);
-            return { id: m.id, homeTeam: m.homeTeam.trim(), awayTeam: m.awayTeam.trim(), homeOdds: h, drawOdds: d, awayOdds: a, homeProb: dv.home, drawProb: dv.draw, awayProb: dv.away };
+            return { id: m.id, homeTeam: m.homeTeam.trim(), awayTeam: m.awayTeam.trim(), homeOdds: h, drawOdds: d, awayOdds: a, homeProb: dv.home, drawProb: dv.draw, awayProb: dv.away, _raw: null };
           }
         })
       );
@@ -180,6 +173,28 @@ export default function ParlayPage() {
       setCombinations(combos);
       const valueCount = combos.filter((c) => c.ev > 0).length;
       toast.success(`${combos.length} combinations · ${valueCount} with positive EV`);
+
+      // Save to History — only matches where the real model responded (_raw present)
+      const toSave = results.filter(r => r._raw !== null);
+      if (toSave.length > 0) {
+        Promise.all(
+          toSave.map(r =>
+            savePrediction({
+              home_team: r.homeTeam, away_team: r.awayTeam,
+              home_odds: r.homeOdds, draw_odds: r.drawOdds, away_odds: r.awayOdds,
+              simulations: 500,
+              home_prob: r.homeProb, draw_prob: r.drawProb, away_prob: r.awayProb,
+              recommended_outcome: r._raw?.recommended_outcome ?? null,
+              model_notes: r._raw?.model_notes ?? [],
+              league: "parlay",
+            })
+          )
+        ).then(outcomes => {
+          const saved = outcomes.filter(Boolean).length;
+          if (saved > 0) toast.info(`${saved} prediction${saved > 1 ? "s" : ""} saved to History`);
+          else toast.error("Could not save to History — check connection");
+        });
+      }
     } finally {
       setAnalysing(false);
     }

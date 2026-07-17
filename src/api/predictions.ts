@@ -32,11 +32,12 @@ export async function savePrediction(data: {
   recommended_outcome: string | null;
   model_notes: string[];
   league?: string;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
-    await apiClient.post("/api/v1/predictions/save", data);
+    const res = await apiClient.post<{ saved: boolean; error?: string }>("/api/v1/predictions/save", data);
+    return res.data?.saved === true;
   } catch {
-    // silent — DB save failure shouldn't interrupt UX
+    return false;
   }
 }
 
