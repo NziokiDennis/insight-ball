@@ -176,8 +176,7 @@ def _fetch_completed_for_date(date_str: str) -> list[dict]:
             for event in data.get("events", []):
                 comp = (event.get("competitions") or [{}])[0]
                 status = ((comp.get("status") or {}).get("type") or {}).get("name", "")
-                if status not in ("STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_FT",
-                                  "STATUS_FINAL_PEN", "STATUS_FINAL_AET"):
+                if not (status.startswith("STATUS_FINAL") or status in ("STATUS_FULL_TIME", "STATUS_FT")):
                     continue
                 competitors = comp.get("competitors", [])
                 home = next((c for c in competitors if c.get("homeAway") == "home"), None)
@@ -448,9 +447,33 @@ def debug_results(date: str = "", league: str = "fifa.world") -> dict:
                 "away": (away.get("team") or {}).get("displayName", ""),
                 "score": f"{home.get('score','?')}-{away.get('score','?')}",
             })
-        return {"url": url, "total_events": len(events), "events": events}
+        unique_statuses = list({e["status"] for e in events})
+        return {"url": url, "total_events": len(events), "unique_statuses": unique_statuses, "events": events}
     except Exception as e:
         return {"url": url, "error": str(e)}
+
+
+@app.get("/api/v1/results/scan-statuses")
+def scan_statuses(start: str = "", days: int = 30, league: str = "fifa.world") -> dict:
+    """Scan a date range and return every unique ESPN status seen — useful for discovering new status codes."""
+    if not start:
+        start = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y%m%d")
+    start_dt = datetime.strptime(start, "%Y%m%d")
+    all_statuses: set[str] = set()
+    for i in range(days):
+        date_str = (start_dt + timedelta(days=i)).strftime("%Y%m%d")
+        url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/scoreboard?dates={date_str}"
+        try:
+            with urlopen(url, timeout=6) as r:
+                data = json.loads(r.read())
+            for event in data.get("events", []):
+                comp = (event.get("competitions") or [{}])[0]
+                status = ((comp.get("status") or {}).get("type") or {}).get("name", "")
+                if status:
+                    all_statuses.add(status)
+        except Exception:
+            continue
+    return {"league": league, "start": start, "days_scanned": days, "unique_statuses": sorted(all_statuses)}
 
 
 @app.patch("/api/v1/predictions/{prediction_id}/result")
