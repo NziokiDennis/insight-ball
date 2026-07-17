@@ -90,6 +90,14 @@ function StatusBadge({ prediction, actual, createdAt }: { prediction: string | n
       </span>
     );
   }
+  if (!prediction) {
+    return (
+      <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+        <span className="h-3.5 w-3.5 inline-flex items-center justify-center">–</span>
+        No bet
+      </span>
+    );
+  }
   const correct = prediction === actual;
   return correct ? (
     <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
@@ -120,8 +128,9 @@ export default function History() {
   useEffect(() => { load(); }, []);
 
   const resolved = predictions.filter((p) => p.actual_result !== null);
-  const correct = resolved.filter((p) => p.recommended_outcome === p.actual_result);
-  const accuracy = resolved.length > 0 ? Math.round((correct.length / resolved.length) * 100) : null;
+  const bets = resolved.filter((p) => p.recommended_outcome !== null);
+  const correct = bets.filter((p) => p.recommended_outcome === p.actual_result);
+  const accuracy = bets.length > 0 ? Math.round((correct.length / bets.length) * 100) : null;
 
   const stats = [
     { label: "Total predictions", value: predictions.length || "--", dot: "bg-primary" },
