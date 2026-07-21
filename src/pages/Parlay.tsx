@@ -4,7 +4,7 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { postPredict } from "@/api/predict";
 import { fetchFixtures, fetchWCFixtures, fetchCLFixtures, type Fixture } from "@/api/fixtures";
 import { savePrediction } from "@/api/predictions";
-import { CalendarDays, CircleDot, FlaskConical, Plus, X, Layers, Loader2, Filter } from "lucide-react";
+import { CalendarDays, CircleDot, FlaskConical, Plus, X, Layers, Loader2, Filter, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -137,6 +137,39 @@ export default function ParlayPage() {
       setMatches(m => [...m, { ...newMatch(), homeTeam: f.home_team, awayTeam: f.away_team }]);
     }
     toast.success(`${f.home_team} vs ${f.away_team} added`);
+  };
+
+  const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      // Skip header row if it looks like one
+      const dataLines = lines[0]?.toLowerCase().includes("home") ? lines.slice(1) : lines;
+      if (!dataLines.length) { toast.error("No data rows found in CSV"); return; }
+
+      const parsed: SlipMatch[] = [];
+      const errors: number[] = [];
+      for (let i = 0; i < dataLines.length; i++) {
+        const cols = dataLines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+        const [home, away, hOdds, dOdds, aOdds] = cols;
+        const h = parseFloat(hOdds), d = parseFloat(dOdds), a = parseFloat(aOdds);
+        if (!home || !away || isNaN(h) || isNaN(d) || isNaN(a) || h <= 1 || d <= 1 || a <= 1) {
+          errors.push(i + 1);
+          continue;
+        }
+        parsed.push({ ...newMatch(), homeTeam: home, awayTeam: away, homeOdds: String(h), drawOdds: String(d), awayOdds: String(a) });
+      }
+
+      if (!parsed.length) { toast.error("No valid rows found. Check format: Home,Away,HomeOdds,DrawOdds,AwayOdds"); return; }
+      const capped = parsed.slice(0, MAX_MATCHES);
+      setMatches(capped.length === 1 ? [capped[0], newMatch()] : capped);
+      toast.success(`${capped.length} match${capped.length > 1 ? "es" : ""} imported from CSV${errors.length ? ` · ${errors.length} row(s) skipped` : ""}`);
+    };
+    reader.readAsText(file);
   };
 
   const addMatch = () => {
@@ -282,7 +315,14 @@ export default function ParlayPage() {
               <div className="dashboard-tile p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="font-display text-lg font-semibold">Slip Builder</h2>
-                  <span className="text-xs text-muted-foreground">{matches.length} / {MAX_MATCHES}</span>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 cursor-pointer rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                      <Upload className="h-3 w-3" />
+                      Import CSV
+                      <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleCSVImport} />
+                    </label>
+                    <span className="text-xs text-muted-foreground">{matches.length} / {MAX_MATCHES}</span>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
