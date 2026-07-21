@@ -544,11 +544,8 @@ def update_results() -> dict:
             ok = _supa_update_result(pred["id"], result_found)
             if ok:
                 updated += 1
-            details.append({"match": f"{home} vs {away}", "result": result_found, "db_saved": ok})
-        else:
-            details.append({"match": f"{home} vs {away}", "result": None, "note": "no ESPN match found in ±14 day window"})
 
-    return {"checked": len(pending), "updated": updated, "details": details}
+    return {"checked": len(pending), "updated": updated}
 
 
 @app.post("/api/v1/backtest")
