@@ -39,7 +39,7 @@ interface Combination {
 
 type SortKey = "probability" | "odds" | "ev";
 
-const MAX_MATCHES = 6;
+const MAX_MATCHES = 10;
 const PAGE_SIZE = 50;
 
 const RESULT_COLORS: Record<string, string> = {
