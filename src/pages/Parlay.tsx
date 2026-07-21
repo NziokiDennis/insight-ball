@@ -121,8 +121,21 @@ export default function ParlayPage() {
   }, []);
 
   const addFromFixture = (f: Fixture) => {
-    if (matches.length >= MAX_MATCHES) { toast.error(`Maximum ${MAX_MATCHES} matches`); return; }
-    setMatches(m => [...m, { ...newMatch(), homeTeam: f.home_team, awayTeam: f.away_team }]);
+    const duplicate = matches.some(
+      m => m.homeTeam.trim().toLowerCase() === f.home_team.toLowerCase() &&
+           m.awayTeam.trim().toLowerCase() === f.away_team.toLowerCase()
+    );
+    if (duplicate) { toast.error(`${f.home_team} vs ${f.away_team} is already in your slip`); return; }
+
+    const emptyIdx = matches.findIndex(m => !m.homeTeam && !m.awayTeam);
+    if (emptyIdx !== -1) {
+      setMatches(m => m.map((x, i) => i === emptyIdx ? { ...x, homeTeam: f.home_team, awayTeam: f.away_team } : x));
+    } else if (matches.length >= MAX_MATCHES) {
+      toast.error(`Maximum ${MAX_MATCHES} matches`);
+      return;
+    } else {
+      setMatches(m => [...m, { ...newMatch(), homeTeam: f.home_team, awayTeam: f.away_team }]);
+    }
     toast.success(`${f.home_team} vs ${f.away_team} added`);
   };
 
