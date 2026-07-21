@@ -271,12 +271,7 @@ app.add_middleware(
 
 @app.get("/api/v1/health")
 def health() -> dict:
-    return {
-        "status": "ok",
-        "form_rows_loaded": len(_form_rows),
-        "league_avg_home_goals": round(_league_stats.avg_home_goals, 3) if _league_stats else None,
-        "league_avg_away_goals": round(_league_stats.avg_away_goals, 3) if _league_stats else None,
-    }
+    return {"ok": 1}
 
 
 @app.get("/api/v1/elo/{team_name}")
