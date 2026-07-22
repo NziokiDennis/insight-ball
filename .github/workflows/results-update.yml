@@ -1,0 +1,15 @@
+name: Auto-Update Results
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"   # every 2 hours
+  workflow_dispatch:          # manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger results update
+        run: |
+          response=$(curl -sf https://insight-ball.onrender.com/api/v1/results/update)
+          echo "Response: $response"
