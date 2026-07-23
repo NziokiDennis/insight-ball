@@ -151,15 +151,23 @@ _RESULT_LEAGUES = [
 
 def _normalise_name(name: str) -> str:
     name = name.lower()
-    for token in (" fc", " sc", " ac", " cf", " utd", " united", " city",
-                  " town", " wanderers", " rovers", " athletic", " albion",
-                  " hotspur", " wednesday", " county"):
+    for token in (" fc", " sc", " ac", " cf", " sk", " fk", " bk", " if", " aif",
+                  " utd", " united", " city", " town", " wanderers", " rovers",
+                  " athletic", " albion", " hotspur", " wednesday", " county",
+                  " aarhus", " istanbul", " belgrade", " zagreb", " bratislava"):
         name = name.replace(token, "")
     return name.strip()
 
 
 def _names_match(a: str, b: str, threshold: float = 0.78) -> bool:
-    return difflib.SequenceMatcher(None, _normalise_name(a), _normalise_name(b)).ratio() >= threshold
+    na, nb = _normalise_name(a), _normalise_name(b)
+    # Fuzzy ratio
+    if difflib.SequenceMatcher(None, na, nb).ratio() >= threshold:
+        return True
+    # Substring containment — "hearts" inside "heart of midlothian", "agf" inside "agf aarhus"
+    if na and nb and (na in nb or nb in na):
+        return True
+    return False
 
 
 def _fetch_completed_for_date(date_str: str) -> list[dict]:
