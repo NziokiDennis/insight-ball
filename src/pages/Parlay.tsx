@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { postPredict } from "@/api/predict";
-import { fetchFixtures, fetchWCFixtures, fetchCLFixtures, type Fixture } from "@/api/fixtures";
+import { fetchFixtures, fetchWCFixtures, fetchCLFixtures, fetchLaLigaFixtures, fetchBundesligaFixtures, fetchSerieAFixtures, fetchLigue1Fixtures, type Fixture } from "@/api/fixtures";
 import { savePrediction } from "@/api/predictions";
 import { CalendarDays, CircleDot, FlaskConical, Plus, X, Layers, Loader2, Filter, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -112,12 +112,20 @@ export default function ParlayPage() {
   const [eplFixtures, setEplFixtures] = useState<Fixture[]>([]);
   const [wcFixtures, setWcFixtures] = useState<Fixture[]>([]);
   const [clFixtures, setClFixtures] = useState<Fixture[]>([]);
-  const [fixtureTab, setFixtureTab] = useState<"epl" | "wc" | "cl">("epl");
+  const [laLigaFixtures, setLaLigaFixtures] = useState<Fixture[]>([]);
+  const [bundesligaFixtures, setBundesligaFixtures] = useState<Fixture[]>([]);
+  const [serieAFixtures, setSerieAFixtures] = useState<Fixture[]>([]);
+  const [ligue1Fixtures, setLigue1Fixtures] = useState<Fixture[]>([]);
+  const [fixtureTab, setFixtureTab] = useState<"epl" | "laliga" | "bundesliga" | "seriea" | "ligue1" | "cl" | "wc">("epl");
 
   useEffect(() => {
     fetchFixtures().then(setEplFixtures);
-    fetchWCFixtures().then(f => { setWcFixtures(f); if (f.length > 0) setFixtureTab("wc"); });
+    fetchWCFixtures().then(setWcFixtures);
     fetchCLFixtures().then(f => { setClFixtures(f); if (f.length > 0) setFixtureTab("cl"); });
+    fetchLaLigaFixtures().then(setLaLigaFixtures);
+    fetchBundesligaFixtures().then(setBundesligaFixtures);
+    fetchSerieAFixtures().then(setSerieAFixtures);
+    fetchLigue1Fixtures().then(setLigue1Fixtures);
   }, []);
 
   const addFromFixture = (f: Fixture) => {
@@ -508,32 +516,40 @@ export default function ParlayPage() {
             </div>
 
             {/* Fixtures quick-fill */}
-            {(eplFixtures.length > 0 || wcFixtures.length > 0 || clFixtures.length > 0) && (
+            {(eplFixtures.length > 0 || clFixtures.length > 0 || laLigaFixtures.length > 0 || bundesligaFixtures.length > 0 || serieAFixtures.length > 0 || ligue1Fixtures.length > 0 || wcFixtures.length > 0) && (
               <div className="dashboard-tile p-4 space-y-3 xl:col-start-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button onClick={() => setFixtureTab("epl")}
-                      className={`text-xs font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "epl" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
-                      Premier League
-                    </button>
-                    {wcFixtures.length > 0 && (
-                      <button onClick={() => setFixtureTab("wc")}
-                        className={`text-xs font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "wc" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
-                        🌍 World Cup
-                      </button>
-                    )}
-                    {clFixtures.length > 0 && (
-                      <button onClick={() => setFixtureTab("cl")}
-                        className={`text-xs font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "cl" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
-                        ⭐ Champions League
-                      </button>
-                    )}
-                  </div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-muted-foreground">Click to add a match to your slip</p>
                   <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
-                <p className="text-xs text-muted-foreground">Click to add a match to your slip</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {(
+                    [
+                      { key: "epl", label: "Premier League" },
+                      { key: "laliga", label: "La Liga" },
+                      { key: "bundesliga", label: "Bundesliga" },
+                      { key: "seriea", label: "Serie A" },
+                      { key: "ligue1", label: "Ligue 1" },
+                      { key: "cl", label: "⭐ Champions League" },
+                      ...(wcFixtures.length > 0 ? [{ key: "wc", label: "🌍 World Cup" }] : []),
+                    ] as { key: typeof fixtureTab; label: string }[]
+                  ).map(({ key, label }) => (
+                    <button key={key} onClick={() => setFixtureTab(key)}
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-colors ${fixtureTab === key ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 <div className="space-y-1.5">
-                  {(fixtureTab === "wc" ? wcFixtures : fixtureTab === "cl" ? clFixtures : eplFixtures).map(f => (
+                  {(
+                    fixtureTab === "wc" ? wcFixtures :
+                    fixtureTab === "cl" ? clFixtures :
+                    fixtureTab === "laliga" ? laLigaFixtures :
+                    fixtureTab === "bundesliga" ? bundesligaFixtures :
+                    fixtureTab === "seriea" ? serieAFixtures :
+                    fixtureTab === "ligue1" ? ligue1Fixtures :
+                    eplFixtures
+                  ).map(f => (
                     <button key={f.id} onClick={() => addFromFixture(f)}
                       className="w-full flex items-center justify-between rounded-md border border-border/60 bg-background px-2.5 py-2 text-xs hover:border-primary/40 hover:bg-primary/5 transition-all text-left group">
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -547,7 +563,15 @@ export default function ParlayPage() {
                       <Plus className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
                     </button>
                   ))}
-                  {(fixtureTab === "wc" ? wcFixtures : fixtureTab === "cl" ? clFixtures : eplFixtures).length === 0 && (
+                  {(
+                    fixtureTab === "wc" ? wcFixtures :
+                    fixtureTab === "cl" ? clFixtures :
+                    fixtureTab === "laliga" ? laLigaFixtures :
+                    fixtureTab === "bundesliga" ? bundesligaFixtures :
+                    fixtureTab === "seriea" ? serieAFixtures :
+                    fixtureTab === "ligue1" ? ligue1Fixtures :
+                    eplFixtures
+                  ).length === 0 && (
                     <p className="text-xs text-muted-foreground text-center py-2">No upcoming fixtures</p>
                   )}
                 </div>
