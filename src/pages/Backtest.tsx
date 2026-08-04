@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { fetchDatasets, runBacktest, type BacktestParams } from "@/api/backtest";
+import { fetchDatasets, runBacktest, uploadDataset, deleteDataset, type BacktestParams } from "@/api/backtest";
 import type { BacktestResult, BacktestBet, DatasetInfo } from "@/types";
-import { CalendarDays, CircleDot, FlaskConical, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
+import { CalendarDays, CircleDot, FlaskConical, TrendingUp, TrendingDown, Loader2, Upload, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -81,6 +81,7 @@ export default function BacktestPage() {
   });
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchDatasets()
@@ -92,6 +93,40 @@ export default function BacktestPage() {
       })
       .catch(() => {});
   }, []);
+
+  async function reloadDatasets() {
+    const ds = await fetchDatasets().catch(() => []);
+    const sorted = [...ds].sort((a, b) => datasetSortKey(a.key).localeCompare(datasetSortKey(b.key)));
+    setDatasets(sorted);
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const name = file.name.replace(/\.csv$/i, "").replace(/[^a-zA-Z0-9_\-]/g, "_");
+    setUploading(true);
+    try {
+      const info = await uploadDataset(name, file);
+      await reloadDatasets();
+      setParams((p) => ({ ...p, datasets: [...p.datasets, info.key] }));
+      toast.success(`Uploaded "${info.key}" · ${info.rows} matches`);
+    } catch {
+      toast.error("Upload failed — check the file is a valid CSV");
+    }
+    setUploading(false);
+  }
+
+  async function handleDelete(key: string) {
+    try {
+      await deleteDataset(key);
+      setDatasets((ds) => ds.filter((d) => d.key !== key));
+      setParams((p) => ({ ...p, datasets: p.datasets.filter((k) => k !== key) }));
+      toast.success(`Removed "${key}"`);
+    } catch {
+      toast.error("Could not delete dataset");
+    }
+  }
 
   const handleRun = async () => {
     setRunning(true);
@@ -218,7 +253,14 @@ export default function BacktestPage() {
 
                 {/* Seasons */}
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Seasons</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Datasets</label>
+                    <label className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium cursor-pointer transition-colors ${uploading ? "opacity-50 pointer-events-none" : "hover:bg-primary/10 text-primary"}`}>
+                      {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                      {uploading ? "Uploading…" : "Upload CSV"}
+                      <input type="file" accept=".csv" className="hidden" onChange={handleUpload} disabled={uploading} />
+                    </label>
+                  </div>
                   {(datasets.length > 0 ? datasets : [{ key: "E0", rows: 339 }]).map((d) => {
                     const checked = params.datasets.includes(d.key);
                     const toggle = () =>
@@ -230,23 +272,35 @@ export default function BacktestPage() {
                               datasetSortKey(a).localeCompare(datasetSortKey(b))
                             ),
                       }));
+                    const isBuiltIn = d.key in DATASET_LABELS;
                     return (
-                      <label key={d.key} className="flex items-center gap-2.5 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={toggle}
-                          className="accent-primary h-3.5 w-3.5 rounded"
-                        />
-                        <span className="text-sm font-medium group-hover:text-primary transition-colors">
-                          {DATASET_LABELS[d.key] ?? d.key}
-                        </span>
-                        <span className="ml-auto text-xs text-muted-foreground">{d.rows} matches</span>
-                      </label>
+                      <div key={d.key} className="flex items-center gap-2.5 group">
+                        <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={toggle}
+                            className="accent-primary h-3.5 w-3.5 rounded shrink-0"
+                          />
+                          <span className="text-sm font-medium group-hover:text-primary transition-colors truncate">
+                            {DATASET_LABELS[d.key] ?? d.key}
+                          </span>
+                          <span className="ml-auto text-xs text-muted-foreground shrink-0">{d.rows}m</span>
+                        </label>
+                        {!isBuiltIn && (
+                          <button
+                            onClick={() => handleDelete(d.key)}
+                            className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-red-500 transition-colors"
+                            title="Remove dataset"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                   <p className="text-[10px] text-muted-foreground pt-1">
-                    {params.datasets.length} season{params.datasets.length !== 1 ? "s" : ""} selected
+                    {params.datasets.length} dataset{params.datasets.length !== 1 ? "s" : ""} selected
                   </p>
                 </div>
 

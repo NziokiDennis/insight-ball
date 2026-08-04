@@ -10,7 +10,8 @@ from urllib.request import urlopen, Request
 from urllib.error import URLError
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+import re
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -400,6 +401,35 @@ def list_datasets() -> dict:
         for f in sorted(_DATA_DIR.glob("*.csv"))
     ]
     return {"datasets": datasets}
+
+
+@app.post("/api/v1/datasets/upload")
+async def upload_dataset(name: str, file: UploadFile = File(...)) -> dict:
+    """Upload a CSV dataset (football-data.co.uk format) for backtesting."""
+    key = re.sub(r"[^a-zA-Z0-9_\-]", "_", name.strip())[:60]
+    if not key:
+        raise HTTPException(status_code=400, detail="Invalid dataset name")
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(content) > 10 * 1024 * 1024:  # 10 MB cap
+        raise HTTPException(status_code=400, detail="File too large (max 10 MB)")
+    _DATA_DIR.mkdir(parents=True, exist_ok=True)
+    dest = _DATA_DIR / f"{key}.csv"
+    dest.write_bytes(content)
+    rows = sum(1 for _ in dest.open()) - 1
+    return {"key": key, "rows": rows}
+
+
+@app.delete("/api/v1/datasets/{key}")
+def delete_dataset(key: str) -> dict:
+    """Delete an uploaded dataset. Built-in datasets (E0 etc.) can also be removed."""
+    safe_key = re.sub(r"[^a-zA-Z0-9_\-]", "", key)
+    path = _DATA_DIR / f"{safe_key}.csv"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    path.unlink()
+    return {"deleted": safe_key}
 
 
 def _parse_espn_fixtures(data: dict, name_map: dict | None = None) -> list[dict]:

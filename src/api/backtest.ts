@@ -19,3 +19,18 @@ export async function runBacktest(params: BacktestParams): Promise<BacktestResul
   const { data } = await apiClient.post<BacktestResult>("/api/v1/backtest", params);
   return data;
 }
+
+export async function uploadDataset(name: string, file: File): Promise<DatasetInfo> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<DatasetInfo>(
+    `/api/v1/datasets/upload?name=${encodeURIComponent(name)}`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
+export async function deleteDataset(key: string): Promise<void> {
+  await apiClient.delete(`/api/v1/datasets/${key}`);
+}
