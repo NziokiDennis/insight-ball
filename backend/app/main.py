@@ -508,7 +508,7 @@ def get_wc_fixtures() -> dict:
 
 @app.get("/api/v1/fixtures/cl")
 def get_cl_fixtures() -> dict:
-    """Fetch upcoming Champions League qualifying fixtures from ESPN."""
+    """Fetch upcoming Champions League fixtures from ESPN."""
     for slug in ("uefa.champions_qual", "uefa.champions"):
         try:
             url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
@@ -520,6 +520,37 @@ def get_cl_fixtures() -> dict:
         except (URLError, OSError, json.JSONDecodeError, KeyError):
             continue
     return {"fixtures": []}
+
+
+def _fetch_league_fixtures(slug: str) -> dict:
+    """Generic ESPN fixture fetcher for a single league slug."""
+    try:
+        url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
+        with urlopen(url, timeout=6) as r:
+            data = json.loads(r.read())
+        return {"fixtures": _parse_espn_fixtures(data)}
+    except (URLError, OSError, json.JSONDecodeError, KeyError):
+        return {"fixtures": []}
+
+
+@app.get("/api/v1/fixtures/laliga")
+def get_laliga_fixtures() -> dict:
+    return _fetch_league_fixtures("esp.1")
+
+
+@app.get("/api/v1/fixtures/bundesliga")
+def get_bundesliga_fixtures() -> dict:
+    return _fetch_league_fixtures("ger.1")
+
+
+@app.get("/api/v1/fixtures/seriea")
+def get_seriea_fixtures() -> dict:
+    return _fetch_league_fixtures("ita.1")
+
+
+@app.get("/api/v1/fixtures/ligue1")
+def get_ligue1_fixtures() -> dict:
+    return _fetch_league_fixtures("fra.1")
 
 
 @app.get("/api/v1/results/debug")

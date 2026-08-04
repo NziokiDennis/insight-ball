@@ -8,7 +8,7 @@ import { usePrediction } from "@/hooks/usePrediction";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { oddsSchema, type OddsFormData } from "@/utils/validation";
 import { pushPrediction, getHistory, clearHistory, type HistoryEntry } from "@/utils/predictionHistory";
-import { fetchFixtures, fetchWCFixtures, fetchCLFixtures, type Fixture } from "@/api/fixtures";
+import { fetchFixtures, fetchWCFixtures, fetchCLFixtures, fetchLaLigaFixtures, fetchBundesligaFixtures, fetchSerieAFixtures, fetchLigue1Fixtures, type Fixture } from "@/api/fixtures";
 import { savePrediction } from "@/api/predictions";
 import {
   Activity,
@@ -53,7 +53,11 @@ export default function Home() {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [wcFixtures, setWcFixtures] = useState<Fixture[]>([]);
   const [clFixtures, setClFixtures] = useState<Fixture[]>([]);
-  const [fixtureTab, setFixtureTab] = useState<"epl" | "wc" | "cl">("epl");
+  const [laLigaFixtures, setLaLigaFixtures] = useState<Fixture[]>([]);
+  const [bundesligaFixtures, setBundesligaFixtures] = useState<Fixture[]>([]);
+  const [serieAFixtures, setSerieAFixtures] = useState<Fixture[]>([]);
+  const [ligue1Fixtures, setLigue1Fixtures] = useState<Fixture[]>([]);
+  const [fixtureTab, setFixtureTab] = useState<"epl" | "laliga" | "bundesliga" | "seriea" | "ligue1" | "cl" | "wc">("epl");
   const [prefill, setPrefill] = useState<{ homeTeam: string; awayTeam: string } | null>(null);
 
   // Load from shared URL params
@@ -119,6 +123,10 @@ export default function Home() {
     fetchFixtures().then(setFixtures);
     fetchWCFixtures().then(setWcFixtures);
     fetchCLFixtures().then(setClFixtures);
+    fetchLaLigaFixtures().then(setLaLigaFixtures);
+    fetchBundesligaFixtures().then(setBundesligaFixtures);
+    fetchSerieAFixtures().then(setSerieAFixtures);
+    fetchLigue1Fixtures().then(setLigue1Fixtures);
   }, []);
 
   const handleSubmit = (data: OddsFormData) => {
@@ -289,38 +297,45 @@ export default function Home() {
                   />
                 ) : (
                   <div className="space-y-4">
-                    {(fixtures.length > 0 || wcFixtures.length > 0 || clFixtures.length > 0) && (
+                    {(fixtures.length > 0 || wcFixtures.length > 0 || clFixtures.length > 0 || laLigaFixtures.length > 0 || bundesligaFixtures.length > 0 || serieAFixtures.length > 0 || ligue1Fixtures.length > 0) && (
                       <div className="dashboard-tile p-5">
-                        <div className="flex items-center justify-between border-b border-border pb-3 mb-3">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                              onClick={() => setFixtureTab("epl")}
-                              className={`text-sm font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "epl" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-                            >
-                              Premier League
-                            </button>
-                            {wcFixtures.length > 0 && (
-                              <button
-                                onClick={() => setFixtureTab("wc")}
-                                className={`text-sm font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "wc" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-                              >
-                                🌍 World Cup 2026
-                              </button>
-                            )}
-                            {clFixtures.length > 0 && (
-                              <button
-                                onClick={() => setFixtureTab("cl")}
-                                className={`text-sm font-semibold px-2 py-0.5 rounded transition-colors ${fixtureTab === "cl" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-                              >
-                                ⭐ Champions League
-                              </button>
-                            )}
+                        <div className="border-b border-border pb-3 mb-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-muted-foreground">Click a fixture to fill team names</p>
+                            <CalendarDays className="h-4 w-4 text-muted-foreground" />
                           </div>
-                          <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {(
+                              [
+                                { key: "epl", label: "Premier League" },
+                                { key: "laliga", label: "La Liga" },
+                                { key: "bundesliga", label: "Bundesliga" },
+                                { key: "seriea", label: "Serie A" },
+                                { key: "ligue1", label: "Ligue 1" },
+                                { key: "cl", label: "⭐ Champions League" },
+                                ...(wcFixtures.length > 0 ? [{ key: "wc", label: "🌍 World Cup" }] : []),
+                              ] as { key: typeof fixtureTab; label: string }[]
+                            ).map(({ key, label }) => (
+                              <button
+                                key={key}
+                                onClick={() => setFixtureTab(key)}
+                                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-colors ${fixtureTab === key ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mb-3">Click a fixture to fill team names</p>
                         <div className="space-y-2">
-                          {(fixtureTab === "wc" ? wcFixtures : fixtureTab === "cl" ? clFixtures : fixtures).map((f) => (
+                          {(
+                            fixtureTab === "wc" ? wcFixtures :
+                            fixtureTab === "cl" ? clFixtures :
+                            fixtureTab === "laliga" ? laLigaFixtures :
+                            fixtureTab === "bundesliga" ? bundesligaFixtures :
+                            fixtureTab === "seriea" ? serieAFixtures :
+                            fixtureTab === "ligue1" ? ligue1Fixtures :
+                            fixtures
+                          ).map((f) => (
                             <button
                               key={f.id}
                               onClick={() => handleFixtureSelect(f)}
@@ -335,7 +350,15 @@ export default function Home() {
                               <span className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">Predict →</span>
                             </button>
                           ))}
-                          {(fixtureTab === "wc" ? wcFixtures : fixtureTab === "cl" ? clFixtures : fixtures).length === 0 && (
+                          {(
+                            fixtureTab === "wc" ? wcFixtures :
+                            fixtureTab === "cl" ? clFixtures :
+                            fixtureTab === "laliga" ? laLigaFixtures :
+                            fixtureTab === "bundesliga" ? bundesligaFixtures :
+                            fixtureTab === "seriea" ? serieAFixtures :
+                            fixtureTab === "ligue1" ? ligue1Fixtures :
+                            fixtures
+                          ).length === 0 && (
                             <p className="text-xs text-muted-foreground text-center py-4">No upcoming fixtures</p>
                           )}
                         </div>
