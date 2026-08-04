@@ -521,6 +521,96 @@ def scan_statuses(start: str = "", days: int = 30, league: str = "fifa.world") -
     return {"league": league, "start": start, "days_scanned": days, "unique_statuses": sorted(all_statuses)}
 
 
+def _supa_fetch_model_stats() -> dict:
+    default = {"resolved": 0, "correct_calls": 0}
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return default
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/model_stats?id=eq.singleton",
+            headers={"apikey": _SUPABASE_KEY, "Authorization": f"Bearer {_SUPABASE_KEY}", "Accept": "application/json"},
+        )
+        with urlopen(req, timeout=6) as r:
+            rows = json.loads(r.read())
+            return rows[0] if rows else default
+    except Exception:
+        return default
+
+
+def _supa_increment_model_stats(resolved_delta: int, correct_delta: int) -> bool:
+    current = _supa_fetch_model_stats()
+    payload = json.dumps({
+        "id": "singleton",
+        "resolved": current.get("resolved", 0) + resolved_delta,
+        "correct_calls": current.get("correct_calls", 0) + correct_delta,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).encode()
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/model_stats",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Prefer": "resolution=merge-duplicates",
+            },
+            method="POST",
+        )
+        with urlopen(req, timeout=6) as r:
+            return r.status in (200, 201)
+    except Exception:
+        return False
+
+
+def _supa_delete_resolved() -> int:
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return 0
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/predictions?actual_result=not.is.null",
+            headers={
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Prefer": "return=representation",
+            },
+            method="DELETE",
+        )
+        with urlopen(req, timeout=15) as r:
+            deleted = json.loads(r.read())
+            return len(deleted)
+    except Exception:
+        return 0
+
+
+@app.get("/api/v1/model/stats")
+def get_model_stats() -> dict:
+    return _supa_fetch_model_stats()
+
+
+@app.post("/api/v1/predictions/archive")
+def archive_predictions() -> dict:
+    """Bank resolved prediction stats into model_stats, then delete resolved rows."""
+    all_preds = _supa_fetch(1000)
+    resolved = [p for p in all_preds if p.get("actual_result")]
+    if not resolved:
+        return {"archived": 0, "correct": 0, "deleted": 0}
+
+    correct = 0
+    for p in resolved:
+        probs = {"home": p.get("home_prob", 0), "draw": p.get("draw_prob", 0), "away": p.get("away_prob", 0)}
+        predicted = max(probs, key=lambda k: probs[k])
+        if predicted == p.get("actual_result"):
+            correct += 1
+
+    ok = _supa_increment_model_stats(len(resolved), correct)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to update model_stats — archive aborted, no rows deleted")
+
+    deleted = _supa_delete_resolved()
+    return {"archived": len(resolved), "correct": correct, "deleted": deleted}
+
+
 @app.patch("/api/v1/predictions/{prediction_id}/result")
 def set_result_manually(prediction_id: str, body: dict) -> dict:
     """Manually set actual_result for a prediction."""
