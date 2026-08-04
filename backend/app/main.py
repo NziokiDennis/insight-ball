@@ -288,13 +288,35 @@ _DATA_DIR = Path(__file__).parent.parent / "data" / "football-data"
 _form_rows: list[dict[str, str]] = []
 _league_stats: LeagueStats | None = None
 
+# All five big leagues — downloaded at startup so every team gets Poisson + form
+_BIG5_CODES = ["E0", "SP1", "D1", "I1", "F1"]
+_CURRENT_SEASON = "2025-2026"  # football-data.co.uk season string
+
+
+def _ensure_league_csv(code: str) -> Path:
+    """Download current-season CSV for a league if not already cached."""
+    path = _DATA_DIR / f"{code}.csv"
+    if not path.exists():
+        _DATA_DIR.mkdir(parents=True, exist_ok=True)
+        from app.data_sources.football_data import csv_url
+        from urllib.request import urlretrieve
+        try:
+            urlretrieve(csv_url(_CURRENT_SEASON, code), path)
+        except Exception:
+            pass  # If download fails, skip — prediction falls back gracefully
+    return path
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _form_rows, _league_stats
-    csv_path = _DATA_DIR / "E0.csv"
-    if csv_path.exists():
-        _form_rows = read_csv(csv_path)
+    all_rows: list[dict[str, str]] = []
+    for code in _BIG5_CODES:
+        path = _ensure_league_csv(code)
+        if path.exists():
+            all_rows.extend(read_csv(path))
+    if all_rows:
+        _form_rows = all_rows
         _league_stats = compute_league_stats(_form_rows)
     yield
 
