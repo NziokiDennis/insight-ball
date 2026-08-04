@@ -130,14 +130,8 @@ def _supa_health() -> dict:
 
 
 _RESULT_LEAGUES = [
+    # Top 5 + major European
     "eng.1",               # Premier League
-    "fifa.world",          # World Cup 2026
-    "fifa.world.2026",
-    "uefa.champions",      # Champions League
-    "uefa.champions_qual", # Champions League qualifying
-    "uefa.europa",         # Europa League
-    "uefa.europa.conf",    # Conference League
-    "eng.2",               # Championship
     "esp.1",               # La Liga
     "ger.1",               # Bundesliga
     "ita.1",               # Serie A
@@ -146,6 +140,54 @@ _RESULT_LEAGUES = [
     "por.1",               # Primeira Liga
     "tur.1",               # Super Lig
     "sco.1",               # Scottish Premiership
+    "bel.1",               # Belgian Pro League
+    "gre.1",               # Greek Super League
+    # Second divisions
+    "eng.2",               # Championship
+    "esp.2",               # La Liga 2
+    "ger.2",               # 2. Bundesliga
+    "ita.2",               # Serie B
+    "fra.2",               # Ligue 2
+    "por.2",               # Liga Portugal 2
+    "sco.2",               # Scottish Championship
+    "eng.3",               # League One
+    # Cup competitions
+    "esp.copa_del_rey",    # Copa del Rey
+    # European cups
+    "uefa.champions",      # Champions League
+    "uefa.champions_qual", # CL qualifying
+    "uefa.europa",         # Europa League
+    "uefa.europa.conf",    # Conference League
+    # International
+    "fifa.world",          # World Cup 2026
+    "fifa.world.2026",
+    # Nordic
+    "nor.1",               # Norwegian Eliteserien
+    "nor.2",               # Norwegian 1. Divisjon
+    "swe.1",               # Swedish Allsvenskan
+    "den.1",               # Danish Superliga
+    "fin.1",               # Finnish Veikkausliiga
+    # Eastern Europe
+    "aut.1",               # Austrian Bundesliga
+    "aut.2",               # Austrian Division I
+    "cze.1",               # Czech Gambrinus Liga
+    "rus.1",               # Russian Premier League
+    "ukr.1",               # Ukrainian Premier League
+    "ser.1",               # Serbian Super Liga
+    "cro.1",               # Croatian HNL
+    "rom.1",               # Romanian Liga 1
+    "svk.1",               # Slovak Super Liga
+    # Rest of world
+    "rsa.1",               # South African PSL
+    "arg.1",               # Argentine Primera División
+    "arg.2",               # Argentine Nacional B
+    "bra.1",               # Brazilian Série A
+    "bra.2",               # Brazilian Série B
+    "mex.1",               # Liga MX
+    "usa.1",               # MLS
+    "jpn.1",               # J1 League
+    "kor.1",               # K League 1
+    "sau.1",               # Saudi Pro League
 ]
 
 
