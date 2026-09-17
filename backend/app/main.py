@@ -749,6 +749,35 @@ def archive_predictions() -> dict:
     return {"archived": len(resolved), "correct": correct, "deleted": deleted}
 
 
+def _supa_delete_one(prediction_id: str) -> bool:
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return False
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/predictions?id=eq.{prediction_id}",
+            headers={
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Prefer": "return=representation",
+            },
+            method="DELETE",
+        )
+        with urlopen(req, timeout=10) as r:
+            deleted = json.loads(r.read())
+            return len(deleted) > 0
+    except Exception:
+        return False
+
+
+@app.delete("/api/v1/predictions/{prediction_id}")
+def delete_prediction(prediction_id: str) -> dict:
+    """Delete a single prediction by id."""
+    ok = _supa_delete_one(prediction_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Prediction not found or delete failed")
+    return {"deleted": True}
+
+
 @app.patch("/api/v1/predictions/{prediction_id}/result")
 def set_result_manually(prediction_id: str, body: dict) -> dict:
     """Manually set actual_result for a prediction."""
