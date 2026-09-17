@@ -666,9 +666,64 @@ def _supa_delete_resolved() -> int:
         return 0
 
 
+def _supa_delete_all_predictions() -> int:
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return 0
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/predictions?id=not.is.null",
+            headers={
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Prefer": "return=representation",
+            },
+            method="DELETE",
+        )
+        with urlopen(req, timeout=15) as r:
+            deleted = json.loads(r.read())
+            return len(deleted)
+    except Exception:
+        return 0
+
+
+def _supa_reset_model_stats() -> bool:
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        return False
+    payload = json.dumps({
+        "id": "singleton",
+        "resolved": 0,
+        "correct_calls": 0,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).encode()
+    try:
+        req = Request(
+            f"{_SUPABASE_URL}/rest/v1/model_stats",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "apikey": _SUPABASE_KEY,
+                "Authorization": f"Bearer {_SUPABASE_KEY}",
+                "Prefer": "resolution=merge-duplicates",
+            },
+            method="POST",
+        )
+        with urlopen(req, timeout=6) as r:
+            return r.status in (200, 201)
+    except Exception:
+        return False
+
+
 @app.get("/api/v1/model/stats")
 def get_model_stats() -> dict:
     return _supa_fetch_model_stats()
+
+
+@app.post("/api/v1/predictions/reset")
+def reset_predictions() -> dict:
+    """Full wipe: delete ALL predictions (resolved + unresolved) and zero model_stats."""
+    deleted = _supa_delete_all_predictions()
+    stats_reset = _supa_reset_model_stats()
+    return {"deleted": deleted, "stats_reset": stats_reset}
 
 
 @app.post("/api/v1/predictions/archive")

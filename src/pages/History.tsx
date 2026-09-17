@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { fetchPredictions, type SavedPrediction } from "@/api/predictions";
 import { apiClient } from "@/api/client";
-import { CalendarDays, RefreshCw, Clock, CircleDot, FlaskConical, Layers, Download, Archive, AlertTriangle } from "lucide-react";
+import { CalendarDays, RefreshCw, Clock, CircleDot, FlaskConical, Layers, Download, Archive, AlertTriangle, Trash2 } from "lucide-react";
 
 const OUTCOME_LABEL: Record<string, string> = {
   home: "Home",
@@ -107,6 +107,8 @@ export default function History() {
   const [refreshing, setRefreshing] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   async function load() {
     setRefreshing(true);
@@ -151,6 +153,19 @@ export default function History() {
       // silent — if archive fails, rows are untouched
     }
     setArchiving(false);
+  }
+
+  async function handleReset() {
+    setResetting(true);
+    setShowResetConfirm(false);
+    try {
+      exportCSV(predictions);
+      await apiClient.post("/api/v1/predictions/reset");
+      await load();
+    } catch {
+      // silent — if reset fails, rows are untouched
+    }
+    setResetting(false);
   }
 
   return (
@@ -213,6 +228,14 @@ export default function History() {
               >
                 <Archive className="h-4 w-4" />
                 Archive & Clear
+              </button>
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                disabled={predictions.length === 0 || resetting}
+                className="flex items-center gap-2 rounded-md bg-white/14 px-4 py-2.5 text-sm font-medium text-white ring-1 ring-white/20 hover:bg-red-500/60 transition-colors disabled:opacity-40"
+              >
+                <Trash2 className="h-4 w-4" />
+                Reset All
               </button>
               <button
                 onClick={load}
@@ -381,6 +404,42 @@ export default function History() {
               >
                 {archiving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
                 {archiving ? "Archiving…" : "Archive & Clear"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">Reset All History</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This will download a CSV backup of everything, then permanently delete ALL predictions (resolved and unresolved) and zero out your all-time accuracy stats. Use this after a model change to start clean.
+                </p>
+                <p className="mt-2 text-sm font-medium text-red-600 dark:text-red-400">
+                  {predictions.length} game{predictions.length !== 1 ? "s" : ""} will be deleted and stats reset to 0.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReset}
+                disabled={resetting}
+                className="flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-60"
+              >
+                {resetting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {resetting ? "Resetting…" : "Reset All"}
               </button>
             </div>
           </div>
