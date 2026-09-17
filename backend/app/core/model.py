@@ -45,23 +45,19 @@ def _blend(signals: dict[str, dict[str, float]], weights: dict[str, float]) -> d
     return {o: sum(weights[s] * signals[s][o] for s in weights) for o in OUTCOMES}
 
 
-_BASE_DRAW = 0.26  # league-average draw rate; keeps Elo/form independent of odds
-
-
 def predict(inp: PredictionInput) -> dict:
     start = perf_counter()
     primary_odds = {"home": inp.home_odds, "draw": inp.draw_odds, "away": inp.away_odds}
     market = devig_odds(primary_odds)
     notes: list[str] = []
 
-    # Elo and form use a fixed base-draw so they are not contaminated by the odds
     elo_probs = None
     if inp.home_elo is not None and inp.away_elo is not None:
-        elo_probs = _elo_1x2(inp.home_elo, inp.away_elo, venue_type=inp.venue_type, base_draw=_BASE_DRAW)
+        elo_probs = _elo_1x2(inp.home_elo, inp.away_elo, venue_type=inp.venue_type, base_draw=market["draw"])
 
     form_probs = None
     if inp.home_form is not None and inp.away_form is not None:
-        form_probs = form_1x2_probabilities(inp.home_form, inp.away_form, base_draw_probability=_BASE_DRAW)
+        form_probs = form_1x2_probabilities(inp.home_form, inp.away_form, base_draw_probability=market["draw"])
 
     poisson_probs = None
     scorelines: list[dict] = []
@@ -69,55 +65,52 @@ def predict(inp: PredictionInput) -> dict:
     if inp.lambda_home is not None and inp.lambda_away is not None:
         poisson_probs = poisson_1x2(inp.lambda_home, inp.lambda_away)
         scorelines = top_scorelines(inp.lambda_home, inp.lambda_away)
+        # Real simulation: each iteration is a Poisson-sampled match scoreline
         home_count, draw_count, away_count = simulate_matches(
             inp.lambda_home, inp.lambda_away, inp.simulations
         )
 
     # --- determine blend ---
-    # Market is used only as a lightweight sanity anchor (10-20%).
-    # Elo + Poisson + form are the primary signals; odds are for EV calc only.
     active = {
         "elo": elo_probs is not None,
         "form": form_probs is not None,
         "poisson": poisson_probs is not None,
     }
+    n_active = sum(active.values())
 
-    if active["poisson"] and active["elo"] and active["form"]:
+    if n_active == 3:
         model = _blend(
             {"market": market, "poisson": poisson_probs, "elo": elo_probs, "form": form_probs},
-            {"market": 0.10, "poisson": 0.40, "elo": 0.30, "form": 0.20},
+            {"market": 0.40, "poisson": 0.25, "elo": 0.20, "form": 0.15},
         )
-        notes.append("Blend: 40% Poisson + 30% Elo + 20% form + 10% market.")
+        notes.append("Blend: 40% market + 25% Poisson + 20% Elo + 15% form.")
     elif active["poisson"] and active["elo"]:
         model = _blend(
             {"market": market, "poisson": poisson_probs, "elo": elo_probs},
-            {"market": 0.15, "poisson": 0.50, "elo": 0.35},
+            {"market": 0.45, "poisson": 0.30, "elo": 0.25},
         )
-        notes.append("Blend: 50% Poisson + 35% Elo + 15% market.")
+        notes.append("Blend: 45% market + 30% Poisson + 25% Elo.")
     elif active["poisson"] and active["form"]:
         model = _blend(
             {"market": market, "poisson": poisson_probs, "form": form_probs},
-            {"market": 0.15, "poisson": 0.50, "form": 0.35},
+            {"market": 0.45, "poisson": 0.30, "form": 0.25},
         )
-        notes.append("Blend: 50% Poisson + 35% form + 15% market.")
+        notes.append("Blend: 45% market + 30% Poisson + 25% form.")
     elif active["poisson"]:
-        model = _blend({"market": market, "poisson": poisson_probs}, {"market": 0.20, "poisson": 0.80})
-        notes.append("Blend: 80% Poisson + 20% market.")
+        model = _blend({"market": market, "poisson": poisson_probs}, {"market": 0.55, "poisson": 0.45})
+        notes.append("Blend: 55% market + 45% Poisson.")
     elif active["elo"] and active["form"]:
-        model = _blend(
-            {"market": market, "elo": elo_probs, "form": form_probs},
-            {"market": 0.20, "elo": 0.50, "form": 0.30},
-        )
-        notes.append("Blend: 50% Elo + 30% form + 20% market.")
+        model = _blend({"market": market, "elo": elo_probs, "form": form_probs}, {"market": 0.55, "elo": 0.25, "form": 0.20})
+        notes.append("Blend: 55% market + 25% Elo + 20% form.")
     elif active["elo"]:
-        model = _blend({"market": market, "elo": elo_probs}, {"market": 0.25, "elo": 0.75})
-        notes.append("Blend: 75% Elo + 25% market.")
+        model = _blend({"market": market, "elo": elo_probs}, {"market": 0.65, "elo": 0.35})
+        notes.append("Blend: 65% market + 35% Elo.")
     elif active["form"]:
-        model = _blend({"market": market, "form": form_probs}, {"market": 0.30, "form": 0.70})
-        notes.append("Blend: 70% form + 30% market.")
+        model = _blend({"market": market, "form": form_probs}, {"market": 0.70, "form": 0.30})
+        notes.append("Blend: 70% market + 30% form.")
     else:
         model = market
-        notes.append("Market-only: no Elo/form/Poisson data available. Probabilities reflect devigged odds.")
+        notes.append("Baseline: devigged market probabilities only.")
 
     # Use Poisson simulation counts when available; otherwise deterministic estimate
     if not active["poisson"]:
